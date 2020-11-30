@@ -22,8 +22,44 @@ dnl fi
 
 AC_MSG_CHECKING(for micro build)
 if test "$PHP_MICRO" != "no"; then
+  AC_MSG_RESULT(yes)
+
   AC_CHECK_TOOL(STRIP, strip, :)
   PHP_SUBST(STRIP)
+dnl prepare stat command
+  AC_CHECK_TOOL(STAT_CMD, stat)
+  if test "x$STAT_CMD" = "x"; then
+    AC_MSG_FAILURE(micro SAPI needs stat command to finish 2-step build.)
+  fi
+  AC_CHECK_TOOL(MKTEMP, mktemp)
+  if test "x$MKTEMP" != "x"; then
+    micro_tempfile=`$MKTEMP`
+  else
+    micro_tempfile=`conftest.tmp`
+  fi
+  echo cafebabe > ${micro_tempfile}
+  AC_MSG_CHECKING(if we using gnu stat)
+  if test x`$STAT_CMD -c '%s' ${micro_tempfile} 2>&AS_MESSAGE_LOG_FD` = "x9"; then
+    AC_MSG_RESULT(yes)
+    STAT_SIZE="${STAT_CMD} -c '%s'"
+  else
+    AC_MSG_RESULT(no)
+  fi
+  if test "x$STAT_SIZE" = "x"; then
+    AC_MSG_CHECKING(if we using bsd stat)
+    if test x`$STAT_CMD -f '%z' ${micro_tempfile} 2>&AS_MESSAGE_LOG_FD` = "x9"; then
+      AC_MSG_RESULT(yes)
+      STAT_SIZE="${STAT_CMD} -f '%z'"
+    else
+      AC_MSG_RESULT(no)
+    fi
+  fi
+  if test "x$STAT_SIZE" = "x"; then
+    AC_MSG_FAILURE(micro SAPI donot support that stat command)
+  fi
+  rm ${micro_tempfile}
+  PHP_SUBST(STAT_SIZE)
+
   PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/sapi/micro/Makefile.frag)
 
   dnl Set filename.
@@ -34,9 +70,6 @@ if test "$PHP_MICRO" != "no"; then
   PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1, '$(SAPI_MICRO_PATH)')
   PHP_SUBST(MICRO_2STAGE_OBJS)
   PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE), MICRO_2STAGE_OBJS)
-
-  EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -all-static"
-  PHP_SUBST(EXTRA_LDFLAGS)
 
   case $host_alias in
   *aix*)
@@ -49,10 +82,14 @@ if test "$PHP_MICRO" != "no"; then
     fi
     ;;
   *darwin*)
-    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(MICRO_2STAGE_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    MICRO_STRIP_FLAGS=""
     ;;
   *)
-    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -all-static"
+    PHP_SUBST(EXTRA_LDFLAGS)
+    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) \$(MICRO_2STAGE_OBJS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    MICRO_STRIP_FLAGS="-s"
     ;;
   esac
 
@@ -61,6 +98,7 @@ if test "$PHP_MICRO" != "no"; then
   dnl PHP_SUBST(PHP_EXECUTABLE)
 
   dnl Expose to Makefile.
+  PHP_SUBST(MICRO_STRIP_FLAGS)
   PHP_SUBST(SAPI_MICRO_PATH)
   PHP_SUBST(BUILD_MICRO)
 
@@ -68,4 +106,3 @@ if test "$PHP_MICRO" != "no"; then
 
   dnl PHP_INSTALL_HEADERS([sapi/cli/cli.h])
 fi
-AC_MSG_RESULT($PHP_MICRO)

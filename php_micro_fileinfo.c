@@ -1,15 +1,21 @@
 
-#include <stdint.h>
-#include <sys/auxv.h>
 
 #include "php.h"
 
 #include "php_micro.h"
 #include "php_micro_helper.h"
 
-#ifdef PHP_WIN32
-# include "win32/codepage.h"
-# define SFX_FILESIZE 0L
+#include <stdint.h>
+#if defined(PHP_WIN32)
+#   include "win32/codepage.h"
+#   include <windows.h>
+#   define SFX_FILESIZE 0L
+#elif defined(___linux)
+#   include <sys/auxv.h>
+#elif defined(__APPLE__)
+#   include <mach-o/dyld.h>
+#else
+#error because we donot support that platform yet
 #endif
 
 uint32_t micro_get_sfx_filesize(){
@@ -88,9 +94,32 @@ const wchar_t* micro_get_filename_w(){
 const char * micro_get_filename(){
     return php_win32_cp_w_to_utf8(micro_get_filename_w());
 }
-#else
+#elif defined(__linux)
 const char * micro_get_filename(){
     return (char*)getauxval(AT_EXECFN);
+}
+#elif defined(__APPLE__)
+const char * micro_get_filename(){
+    static const char nullstr[1] = "";
+    static char * self_path = NULL;
+    if (NULL == self_path){
+        uint32_t len = 0;
+        if (-1 != _NSGetExecutablePath(NULL, &len)) {
+            goto error;
+        }
+        self_path = malloc(len);
+        if (NULL == self_path) {
+            goto error;
+        }
+        if (0 != _NSGetExecutablePath(self_path, &len)) {
+            goto error;
+        }
+
+    }
+    return self_path;
+    error:
+    self_path = nullstr;
+    return NULL;
 }
 #endif
 
