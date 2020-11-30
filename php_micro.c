@@ -477,12 +477,14 @@ int main(int argc, char *argv[])
             goto err;
         }
 
-        translated_path = self_filename_mb ? strdup(self_filename_mb) : NULL;
         zend_stream_init_fp(&file_handle, fp, self_filename_mb);
 
         dbgprintf("set args\n");
         SG(request_info).argc = argc;
-        // since self_path_mb is from GetModuleName or realpathed argv[0], it's should be abs path.
+        char real_path[MAXPATHLEN];
+        if (VCWD_REALPATH(self_filename_mb, real_path)) {
+            translated_path = strdup(real_path);
+        }
         SG(request_info).path_translated = translated_path; // tofree
         SG(request_info).argv = argv;
 
