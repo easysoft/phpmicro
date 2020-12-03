@@ -24,8 +24,9 @@ patch文件在patches目录下，选择patch文件：
 
 patch文件 | 平台/PHP版本 | 是否必须 | 作用
 disable_huge_page.patch | Linux | 可选 | 禁用linux构建的max-page-size选项，缩减sfx体积（典型的， 10M+ -> 5M）
-main.patch | Windows / PHP 7.4 | 可选，建议使用 | 禁用sfx启动时LoadLibrary(vcruntime140.dll)
-win32.patch | Windows | 必选 | 修改构建系统以静态构建
+vcruntime140_<php version>.patch | Windows | 必选 | 禁用sfx启动时GetModuleHandle(vcruntime140(d).dll)
+win32_<php version>.patch | Windows | 必选 | 修改构建系统以静态构建
+zend_stream.patch | Windows | 必选 | 修改构建系统以静态构建
 phar.patch | * | 可选 | 实现phar的支持
 
 并分别进行patch：
