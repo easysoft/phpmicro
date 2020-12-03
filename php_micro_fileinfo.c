@@ -10,7 +10,7 @@
 #   include "win32/codepage.h"
 #   include <windows.h>
 #   define SFX_FILESIZE 0L
-#elif defined(___linux)
+#elif defined(__linux)
 #   include <sys/auxv.h>
 #elif defined(__APPLE__)
 #   include <mach-o/dyld.h>
@@ -19,9 +19,12 @@
 #endif
 
 uint32_t micro_get_sfx_filesize(){
-    static volatile uint32_t _sfx_filesize = SFX_FILESIZE;
+    static uint32_t _sfx_filesize = SFX_FILESIZE;
 #ifdef PHP_WIN32
-    if(0 == _sfx_filesize){
+    dbgprintf("_sfx_filesize: %d, %p\n",_sfx_filesize, &_sfx_filesize);
+    dbgprintf("resource: %p\n",FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFX_FILESIZE_ID), RT_RCDATA));
+    dbgprintf("err: %8x\n", GetLastError());
+    if(SFX_FILESIZE == _sfx_filesize){
         memcpy(
             (void *)&_sfx_filesize,
             LockResource(

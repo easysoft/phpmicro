@@ -106,7 +106,7 @@ PHP_FUNCTION(micro_enum_modules){
 
 #ifdef _DEBUG
 // debug use
-int dbgprintf(/*const char * fmt, ...*/){
+int dbgprintf(const char * fmt, ...){
     va_list args = NULL;
     va_start(args, fmt);
     //_setmode( _fileno( stdout ), _O_U16TEXT );
