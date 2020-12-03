@@ -23,9 +23,10 @@ git clone <url for this repo> sapi/micro
 Patches are located at patches directory, choose patch(es) as you like：
 
 patch | platform / PHP version | Optional? | usage
+--- | --- | --- | ---
 disable_huge_page.patch | Linux | Optional | disalbe max-page-size for linux bnuild，shrink sfx size (10M+ -> 5M typ.)
-vcruntime140_<php version>.patch | Windows | Nessesary | disable GetModuleHandle(vcruntime140(d).dll) at sfx start
-win32_<php version>.patch | Windows | Nessesary | modify build system for build sfx file
+vcruntime140_\<php version\>.patch | Windows | Nessesary | disable GetModuleHandle(vcruntime140(d).dll) at sfx start
+win32_\<php version\>.patch | Windows | Nessesary | modify build system for build sfx file
 zend_stream.patch | Windows | Nessesary | modify build system for build sfx file
 phar.patch | * | Optional | modify phar extension for support
 
