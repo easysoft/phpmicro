@@ -86,7 +86,7 @@ zend_always_inline int micro_check_self(LPCWSTR self_path, uint32_t sfx_filesize
     }
     DWORD filesize = GetFileSize(hFile, NULL);
     if (filesize <= sfx_filesize){
-        printf("no payload found.\n tell user usage here\n"); //TODO:
+		fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
         CloseHandle(hFile);
         return FAILURE;
     }
@@ -108,7 +108,7 @@ zend_always_inline int micro_check_self(const char * self_path, uint32_t sfx_fil
         return FAILURE;
     }
     if(stats.st_size <= sfx_filesize){
-        printf("no payload found.\n tell user usage here\n"); //TODO:
+        fprintf(stderr, "no payload found.\n " PHP_MICRO_HINT, self_path);
         return FAILURE;
     }
     return SUCCESS;
@@ -472,7 +472,7 @@ int main(int argc, char *argv[])
 	setmode(_fileno(stderr), O_BINARY);		/* make the stdio mode be binary */
 #endif
 
-    // here we start excution
+    // here we start execution
 
     dbgprintf("start try catch\n");
     zend_try{

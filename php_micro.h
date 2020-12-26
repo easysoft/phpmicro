@@ -20,12 +20,24 @@ limitations under the License.
 #define _PHP_MICRO_H
 
 #define PHP_MICRO_SFX_FILESIZE_ID 12345
+#ifdef PHP_WIN32
+#define PHP_MICRO_HINT_CMDC "copy /b %s + mycode.php mycode.exe"
+#define PHP_MICRO_HINT_CMDE "mycode.exe myarg1 myarg2"
+#else
+#define PHP_MICRO_HINT_CMDC "cat %s mycode.php > mycode"
+#define PHP_MICRO_HINT_CMDE "./mycode myarg1 myarg2"
+#endif
+#define PHP_MICRO_HINT "micro SAPI for PHP\n" \
+    "Usage: concatenate this binary with any php code then execute it.\n" \
+    "for example: if we have code as mycode.php, to concatenate them, execute:\n" \
+    "    " PHP_MICRO_HINT_CMDC "\n" \
+    "then execute it:\n" \
+    "    " PHP_MICRO_HINT_CMDE "\n"
 
 #ifdef PHP_WIN32
 # define MICRO_SFX_EXPORT __declspec(dllexport) __declspec(noinline)
 #else
 # define MICRO_SFX_EXPORT __attribute__((visibility ("default")))
 #endif
-
 
 #endif // _PHP_MICRO_H
