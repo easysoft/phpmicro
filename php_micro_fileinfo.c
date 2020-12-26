@@ -141,6 +141,8 @@ const char * micro_get_filename(){
     self_path = nullstr;
     return NULL;
 }
+#else
+#error "not support this system yet"
 #endif
 
 PHP_FUNCTION(micro_get_self_filename){

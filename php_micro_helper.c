@@ -200,7 +200,7 @@ PHP_FUNCTION(micro_version){
     ZVAL_LONG(&zv, PHP_MICRO_VER_PAT);
     zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
 #   ifdef PHP_MICRO_VER_APP
-    ZVAL_NEW_STR(&zv, PHP_MICRO_VER_APP);
+    ZVAL_STRING(&zv, PHP_MICRO_VER_APP);
     zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
 #   endif
 }
