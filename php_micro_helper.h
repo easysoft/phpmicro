@@ -22,6 +22,7 @@ limitations under the License.
 #include "php.h"
 #include "php_micro.h"
 
+PHP_FUNCTION(micro_version);
 #ifdef _DEBUG
 int micro_init(void);
 MICRO_SFX_EXPORT int dbgprintf(const char * fmt, ...);

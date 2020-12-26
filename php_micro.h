@@ -19,6 +19,19 @@ limitations under the License.
 #ifndef _PHP_MICRO_H
 #define _PHP_MICRO_H
 
+#define STRINGIZE(x) STRINGIZE2(x)
+#define STRINGIZE2(x) #x
+
+#define PHP_MICRO_VER_MAJ 0
+#define PHP_MICRO_VER_MIN 0
+#define PHP_MICRO_VER_PAT 1
+#define PHP_MICRO_VER_APP "prealpha"
+#ifdef PHP_MICRO_VER_APP
+#define PHP_MICRO_VER_STR STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT) "-" PHP_MICRO_VER_APP
+#else
+#define PHP_MICRO_VER_STR STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT)
+#endif
+
 #define PHP_MICRO_SFX_FILESIZE_ID 12345
 #ifdef PHP_WIN32
 #define PHP_MICRO_HINT_CMDC "copy /b %s + mycode.php mycode.exe"
@@ -27,7 +40,7 @@ limitations under the License.
 #define PHP_MICRO_HINT_CMDC "cat %s mycode.php > mycode"
 #define PHP_MICRO_HINT_CMDE "./mycode myarg1 myarg2"
 #endif
-#define PHP_MICRO_HINT "micro SAPI for PHP\n" \
+#define PHP_MICRO_HINT "micro SAPI for PHP v" PHP_MICRO_VER_STR "\n" \
     "Usage: concatenate this binary with any php code then execute it.\n" \
     "for example: if we have code as mycode.php, to concatenate them, execute:\n" \
     "    " PHP_MICRO_HINT_CMDC "\n" \

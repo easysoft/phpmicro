@@ -108,7 +108,7 @@ zend_always_inline int micro_check_self(const char * self_path, uint32_t sfx_fil
         return FAILURE;
     }
     if(stats.st_size <= sfx_filesize){
-        fprintf(stderr, "no payload found.\n " PHP_MICRO_HINT, self_path);
+        fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
         return FAILURE;
     }
     return SUCCESS;
@@ -371,9 +371,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_self_filename, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_micro_version, 0)
+ZEND_END_ARG_INFO()
+
 static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
+    PHP_FE(micro_version, arginfo_micro_version)
 #ifdef _DEBUG
     ZEND_FE(dl, arginfo_dl)
     PHP_FE(micro_update_extension_dir, arginfo_micro_update_extension_dir)

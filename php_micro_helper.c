@@ -36,12 +36,12 @@ HANDLE hOut, hErr;
 int micro_init(void){
     hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if(INVALID_HANDLE_VALUE == hOut){
-        wprintf("failed get output handle\n");
+        wprintf(L"failed get output handle\n");
         return ENOMEM;
     }
     hErr = GetStdHandle(STD_ERROR_HANDLE);
     if(INVALID_HANDLE_VALUE == hErr){
-        wprintf("failed get err handle\n");
+        wprintf(L"failed get err handle\n");
         return ENOMEM;
     }
     return 0;
@@ -190,3 +190,17 @@ MICRO_SFX_EXPORT void miaomiaomiao(void){
 }
 #endif // _DEBUG
 
+PHP_FUNCTION(micro_version){
+    array_init(return_value);
+    zval zv;
+    ZVAL_LONG(&zv, PHP_MICRO_VER_MAJ);
+    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
+    ZVAL_LONG(&zv, PHP_MICRO_VER_MIN);
+    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
+    ZVAL_LONG(&zv, PHP_MICRO_VER_PAT);
+    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
+#   ifdef PHP_MICRO_VER_APP
+    ZVAL_NEW_STR(&zv, PHP_MICRO_VER_APP);
+    zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
+#   endif
+}
