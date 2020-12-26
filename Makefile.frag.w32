@@ -36,10 +36,6 @@ $(MICRO_SFX): $(MICRO_LINKING_OBJS) $(BUILD_DIR)\php-micro.exe.manifest
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
 
-php7stub:
-	@$(CC) /c /MT /Fo$(BUILD_DIR)/sapi/micro/ sapi/micro/php7stub.c
-	@"$(LINK)" /nologo /dll $(BUILD_DIR)/sapi/micro/php7stub.obj /out:$(BUILD_DIR)\php7.dll /nodefaultlib:msvcrt
-
 sfx: $(MICRO_SFX)
 	@echo Done build micro sfx
 
