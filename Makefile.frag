@@ -1,6 +1,3 @@
-say_warning:
-	echo nope
-	false
 
 micro: $(SAPI_MICRO_PATH)
 
@@ -16,7 +13,6 @@ $(SAPI_MICRO_PATH): $(PHP_GLOBAL_OBJS) $(PHP_BINARY_OBJS) $(PHP_MICRO_OBJS)
 	make micro_2s_objs SFX_FILESIZE=`$(STAT_SIZE) $(SAPI_MICRO_PATH)`
 	$(BUILD_MICRO)
 	$(STRIP) $(MICRO_STRIP_FLAGS) $(SAPI_MICRO_PATH)
-
 
 sfx_test:
 	echo test
