@@ -28,7 +28,12 @@ if (PHP_MICRO == "yes") {
 
 	ADD_FLAG("LDFLAGS_MICRO", "/stack:67108864");
 	ADD_FLAG('LDFLAGS_MICRO', '/nodefaultlib:MSVCRT');
+	//ADD_FLAG('LDFLAGS_MICRO', '/nodefaultlib:LIBCMT');
 	ADD_FLAG('LDFLAGS_MICRO', '/ignore:4049');
+
+	if(PHP_FFI != 'no'){
+		ADD_FLAG('LDFLAGS_MICRO', '/LTCG');
+	}
 
 	ADD_FLAG('CFLAGS', '/DPHP_MICRO_BUILD_SFX');
 	ADD_FLAG('CFLAGS_MICRO', '/we4013');
