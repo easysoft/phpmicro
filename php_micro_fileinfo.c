@@ -73,8 +73,20 @@ const wchar_t* micro_get_filename_w(){
     DWORD self_filename_chars = MAX_PATH;
     self_filename = malloc(self_filename_chars * sizeof(WCHAR));
     DWORD wapiret = 0;
-    
-    while(self_filename_chars == (wapiret = GetModuleFileNameW(NULL, self_filename, self_filename_chars))){
+
+    DWORD (*myGetModuleFileNameExW)(HANDLE, HMODULE, LPWSTR, DWORD);
+
+    HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
+    myGetModuleFileNameExW = (void*)GetProcAddress(hKernel32, "K32GetModuleFileNameExW");
+    if(NULL == myGetModuleFileNameExW){
+        HMODULE hPsapi = GetModuleHandleW(L"psapi.dll");
+        myGetModuleFileNameExW = (void*)GetProcAddress(hPsapi, "GetModuleFileNameExW");
+    }
+    if(NULL == myGetModuleFileNameExW){
+        dbgprintf("cannot get self path via win32api\n");
+        return NULL;
+    }
+    while(self_filename_chars == (wapiret = myGetModuleFileNameExW(GetCurrentProcess(), NULL, self_filename, self_filename_chars))){
         dbgprintf("wapiret is %d\n", wapiret);
         dbgprintf("lensize is %d\n", self_filename_chars);
         if(
