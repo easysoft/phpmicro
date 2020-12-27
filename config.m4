@@ -67,9 +67,13 @@ dnl prepare stat command
 
   dnl Select SAPI.
   CFLAGS="$CFLAGS -DPHP_MICRO_BUILD_SFX"
-  PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1, '$(SAPI_MICRO_PATH)')
+  PHP_SUBST(MICRO_CFLAGS)
+  if test "${enable_debug+set}" = set; then
+    MICRO_CFLAGS=-D_DEBUG
+  fi
+  PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), '$(SAPI_MICRO_PATH)')
   PHP_SUBST(MICRO_2STAGE_OBJS)
-  PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE), MICRO_2STAGE_OBJS)
+  PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE) -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), MICRO_2STAGE_OBJS)
 
   case $host_alias in
   *aix*)

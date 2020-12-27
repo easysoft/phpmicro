@@ -31,44 +31,19 @@ uint32_t micro_get_sfx_filesize();
 const wchar_t * micro_get_filename_w();
 const char * micro_get_filename();
 
-zend_always_inline int is_stream_self(php_stream * stream){
-	dbgprintf("checking %s\n", stream->orig_path);
-#ifdef PHP_WIN32
-	LPCWSTR stream_path_w = php_win32_ioutil_any_to_w(stream->orig_path);
-	size_t stream_path_w_len = wcslen(stream_path_w);
-	LPCWSTR my_path_w = micro_get_filename_w();
-	size_t my_path_w_len = wcslen(my_path_w);
-	dbgprintf("with self: %S\n", my_path_w);
-	if (my_path_w_len == stream_path_w_len && 0 == wcscmp(stream_path_w, my_path_w)){
-#else
-	const char* stream_path = stream->orig_path;
-	size_t stream_path_len = strlen(stream_path);
-	const char* my_path = micro_get_filename();
-	size_t my_path_len = strlen(my_path);
-	dbgprintf("with self: %s\n", my_path);
-	if (my_path_len == stream_path_len && 0 == strcmp(stream_path, my_path)){
-#endif
-		dbgprintf("is self\n");
-		return 1;
-	}
-	dbgprintf("not self\n");
-	return 0;
-}
+int is_stream_self(php_stream * stream);
+#define micro_php_stream_rewind(stream) (\
+	is_stream_self(stream)?\
+	_php_stream_seek(stream, micro_get_sfx_filesize(), SEEK_SET):\
+    _php_stream_seek(stream, 0, SEEK_SET)\
+)
 
-zend_always_inline int micro_php_stream_rewind(php_stream * stream) {
-	if(is_stream_self(stream)){
-		return _php_stream_seek(stream, micro_get_sfx_filesize(), SEEK_SET);
-	}
-	return _php_stream_seek(stream, 0, SEEK_SET);
-}
-
-zend_always_inline int micro_php_stream_seek(php_stream * stream, int offset, int whence) {
-	if(is_stream_self(stream) && SEEK_SET == whence){
-        dbgprintf("seeking with offset\n");
-		return _php_stream_seek(stream, offset + micro_get_sfx_filesize(), SEEK_SET);
-	}
-	return _php_stream_seek(stream, 0, SEEK_SET);
-}
+#define micro_php_stream_seek(stream, offset, whence) (\
+	is_stream_self(stream) && SEEK_SET == whence ?\
+    dbgprintf("seeking with offset\n"),\
+    _php_stream_seek(stream, offset + micro_get_sfx_filesize(), SEEK_SET):\
+    _php_stream_seek(stream, 0, SEEK_SET)\
+)
 
 PHPAPI PHP_FUNCTION(micro_get_sfx_filesize);
 PHPAPI PHP_FUNCTION(micro_get_self_filename);

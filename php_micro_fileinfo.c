@@ -128,7 +128,12 @@ const char * micro_get_filename(){
 }
 #elif defined(__linux)
 const char * micro_get_filename(){
-    return (char*)getauxval(AT_EXECFN);
+    static char* self_filename = NULL;
+    if(NULL == self_filename){
+        self_filename = malloc(PATH_MAX);
+        realpath((const char*)getauxval(AT_EXECFN), self_filename);
+    }
+    return self_filename;
 }
 #elif defined(__APPLE__)
 const char * micro_get_filename(){
@@ -156,6 +161,31 @@ const char * micro_get_filename(){
 #else
 #error "not support this system yet"
 #endif
+
+int is_stream_self(php_stream * stream){
+	dbgprintf("checking %s\n", stream->orig_path);
+#ifdef PHP_WIN32
+	LPCWSTR stream_path_w = php_win32_ioutil_any_to_w(stream->orig_path);
+	size_t stream_path_w_len = wcslen(stream_path_w);
+	LPCWSTR my_path_w = micro_get_filename_w();
+	size_t my_path_w_len = wcslen(my_path_w);
+	dbgprintf("with self: %S\n", my_path_w);
+	if (my_path_w_len == stream_path_w_len && 0 == wcscmp(stream_path_w, my_path_w)){
+#else
+	const char* stream_path = stream->orig_path;
+	size_t stream_path_len = strlen(stream_path);
+	const char* my_path = micro_get_filename();
+	size_t my_path_len = strlen(my_path);
+	dbgprintf("with self: %s\n", my_path);
+	if (my_path_len == stream_path_len && 0 == strcmp(stream_path, my_path)){
+#endif
+		dbgprintf("is self\n");
+		return 1;
+	}
+	dbgprintf("not self\n");
+	return 0;
+}
+
 
 PHP_FUNCTION(micro_get_self_filename){
     RETURN_STRING(micro_get_filename());

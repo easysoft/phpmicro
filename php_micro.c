@@ -78,7 +78,7 @@ const char HARDCODED_INI[] =
 	"max_input_time=-1\n\0";
 
 #ifdef PHP_WIN32
-zend_always_inline int micro_check_self(LPCWSTR self_path, uint32_t sfx_filesize){
+int micro_check_self(LPCWSTR self_path, uint32_t sfx_filesize){
     HANDLE hFile = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
     if(INVALID_HANDLE_VALUE == hFile){
         // TODO: tell failed here
@@ -94,7 +94,7 @@ zend_always_inline int micro_check_self(LPCWSTR self_path, uint32_t sfx_filesize
     return SUCCESS;
 }
 #else
-zend_always_inline int micro_check_self(const char * self_path, uint32_t sfx_filesize){
+int micro_check_self(const char * self_path, uint32_t sfx_filesize){
     int ret = open(self_path, O_RDONLY);
     if(-1 == ret){
         // TODO: tell failed here
@@ -357,8 +357,10 @@ ZEND_BEGIN_ARG_INFO(arginfo_dl, 0)
 ZEND_END_ARG_INFO()
 /* }}} */
 
+#ifdef PHP_WIN32
 ZEND_BEGIN_ARG_INFO(arginfo_micro_enum_modules, 0)
 ZEND_END_ARG_INFO()
+#endif // PHP_WIN32
 
 ZEND_BEGIN_ARG_INFO(arginfo_micro_update_extension_dir, 0)
 	ZEND_ARG_INFO(0, new_dir)
@@ -381,8 +383,10 @@ static const zend_function_entry additional_functions[] = {
 #ifdef _DEBUG
     ZEND_FE(dl, arginfo_dl)
     PHP_FE(micro_update_extension_dir, arginfo_micro_update_extension_dir)
+#ifdef PHP_WIN32
     PHP_FE(micro_enum_modules, arginfo_micro_enum_modules)
-#endif
+#endif // PHP_WIN32
+#endif // _DEBUG
 	PHP_FE_END
 };
 
@@ -395,7 +399,7 @@ int main(int argc, char *argv[])
 #endif
 {
     int exit_status = 0;
-#ifdef _DEBUG
+#if defined(PHP_WIN32) && defined(_DEBUG)
     if(0!=(exit_status = micro_init())){
         return exit_status;
     }

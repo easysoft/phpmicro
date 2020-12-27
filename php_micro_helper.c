@@ -55,7 +55,7 @@ int micro_init(void){
 //#endif
 wchar_t * mysprintf(const wchar_t * fmt, ...){
     LPVOID pBuf = NULL;
-    va_list args = NULL;
+    va_list args;
     va_start(args, fmt);
 
     DWORD lenWords = FormatMessageW(
@@ -74,7 +74,7 @@ wchar_t * mysprintf(const wchar_t * fmt, ...){
 
 MICRO_SFX_EXPORT int micro_format_output_w(const wchar_t * fmt, ...){
     LPVOID pBuf = NULL;
-    va_list args = NULL;
+    va_list args;
     va_start(args, fmt);
 
     DWORD lenWords = FormatMessageW(
@@ -126,7 +126,7 @@ PHP_FUNCTION(micro_enum_modules){
 #endif // PHP_WIN32
 // debug use
 int dbgprintf(const char * fmt, ...){
-    va_list args = NULL;
+    va_list args;
     va_start(args, fmt);
     //_setmode( _fileno( stdout ), _O_U16TEXT );
     int ret = vprintf(fmt, args);
