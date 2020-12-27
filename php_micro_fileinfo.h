@@ -36,17 +36,23 @@ zend_always_inline int is_stream_self(php_stream * stream){
 #ifdef PHP_WIN32
 	LPCWSTR stream_path_w = php_win32_ioutil_any_to_w(stream->orig_path);
 	size_t stream_path_w_len = wcslen(stream_path_w);
-	LPCWSTR mypath_w = php_win32_ioutil_any_to_w(micro_get_filename());
-	size_t mypath_w_len = wcslen(mypath_w);
-	dbgprintf("with self: %S\n", mypath_w);
-	if (mypath_w_len == stream_path_w_len && 0 == wcscmp(stream_path_w, mypath_w)){
+	LPCWSTR my_path_w = micro_get_filename_w();
+	size_t my_path_w_len = wcslen(my_path_w);
+	dbgprintf("with self: %S\n", my_path_w);
+	if (my_path_w_len == stream_path_w_len && 0 == wcscmp(stream_path_w, my_path_w)){
+#else
+	char* stream_path = stream->orig_path;
+	size_t stream_path_len = strlen(stream_path);
+	char* my_path = micro_get_filename();
+	size_t my_path_len = strlen(my_path);
+	dbgprintf("with self: %s\n", my_path);
+	if (my_path_len == stream_path_len && 0 == wcscmp(stream_path, my_path)){
+#endif
 		dbgprintf("is self\n");
 		return 1;
 	}
 	dbgprintf("not self\n");
 	return 0;
-#else
-#endif
 }
 
 zend_always_inline int micro_php_stream_rewind(php_stream * stream) {
