@@ -94,6 +94,11 @@ MICRO_SFX_EXPORT int micro_format_output_w(const wchar_t * fmt, ...){
     return lenWords;
 }
 
+#endif // PHP_WIN32
+
+
+#ifdef _DEBUG
+#ifdef PHP_WIN32
 PHP_FUNCTION(micro_enum_modules){
     HMODULE hMods[1024];
     HANDLE hProcess = GetCurrentProcess();
@@ -119,9 +124,6 @@ PHP_FUNCTION(micro_enum_modules){
     RETURN_TRUE;
 }
 #endif // PHP_WIN32
-
-
-#ifdef _DEBUG
 // debug use
 int dbgprintf(const char * fmt, ...){
     va_list args = NULL;
