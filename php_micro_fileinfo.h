@@ -41,12 +41,12 @@ zend_always_inline int is_stream_self(php_stream * stream){
 	dbgprintf("with self: %S\n", my_path_w);
 	if (my_path_w_len == stream_path_w_len && 0 == wcscmp(stream_path_w, my_path_w)){
 #else
-	char* stream_path = stream->orig_path;
+	const char* stream_path = stream->orig_path;
 	size_t stream_path_len = strlen(stream_path);
-	char* my_path = micro_get_filename();
+	const char* my_path = micro_get_filename();
 	size_t my_path_len = strlen(my_path);
 	dbgprintf("with self: %s\n", my_path);
-	if (my_path_len == stream_path_len && 0 == wcscmp(stream_path, my_path)){
+	if (my_path_len == stream_path_len && 0 == strcmp(stream_path, my_path)){
 #endif
 		dbgprintf("is self\n");
 		return 1;
