@@ -151,7 +151,7 @@ then build micro as
 ```bash
 # ./buildconf things...
 # export CC=musl-xxx things...
-export PKG_CONFIG_PATH=/my/prefered/path
+export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 # ./configure balabala
 # make balabala
 ```
