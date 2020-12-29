@@ -77,43 +77,6 @@ const char HARDCODED_INI[] =
 	"max_execution_time=0\n"
 	"max_input_time=-1\n\0";
 
-#ifdef PHP_WIN32
-int micro_check_self(LPCWSTR self_path, uint32_t sfx_filesize){
-    HANDLE hFile = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
-    if(INVALID_HANDLE_VALUE == hFile){
-        // TODO: tell failed here
-        return FAILURE;
-    }
-    DWORD filesize = GetFileSize(hFile, NULL);
-    if (filesize <= sfx_filesize){
-		fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
-        CloseHandle(hFile);
-        return FAILURE;
-    }
-    CloseHandle(hFile);
-    return SUCCESS;
-}
-#else
-int micro_check_self(const char * self_path, uint32_t sfx_filesize){
-    int ret = open(self_path, O_RDONLY);
-    if(-1 == ret){
-        // TODO: tell failed here
-        return FAILURE;
-    }
-    close(ret);
-    struct stat stats;
-    ret = stat(self_path, &stats);
-    if(-1 == ret){
-        // TODO: tell failed here
-        return FAILURE;
-    }
-    if(stats.st_size <= sfx_filesize){
-        fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
-        return FAILURE;
-    }
-    return SUCCESS;
-}
-#endif
 
 static char *php_self = "";
 static char *script_filename = "";
@@ -400,30 +363,35 @@ int main(int argc, char *argv[])
 {
     int exit_status = 0;
 #if defined(PHP_WIN32) && defined(_DEBUG)
-    if(0!=(exit_status = micro_init())){
+    if(0!=(exit_status = micro_helper_init())){
         return exit_status;
     }
 #endif
+	if(0!=(exit_status = micro_fileinfo_init())){
+        return exit_status;
+    }
     const int sfx_filesize = micro_get_sfx_filesize();
-    dbgprintf("mysize is %d\n", sfx_filesize);
+    dbgprintf("myfinalsize is %d\n", sfx_filesize);
     zend_file_handle file_handle;
     const char * self_filename_mb = micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
     char * translated_path;
-    char * ini_entries;
-    size_t ini_entries_len;
+    char * ini_entries = malloc(sizeof(HARDCODED_INI) + micro_ext_ini.size);
+	memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
+	size_t ini_entries_len = sizeof(HARDCODED_INI);
+	if (0 < micro_ext_ini.size){
+		memcpy(&ini_entries[ini_entries_len-2], micro_ext_ini.data, micro_ext_ini.size);
+		ini_entries_len += micro_ext_ini.size -2;
+		free(micro_ext_ini.data);
+		micro_ext_ini.data = NULL;
+	}
+	// remove ending 2 '\0's
+	ini_entries_len -= 2;
+
     sapi_module_struct *sapi_module = &micro_sapi_module;
     int module_started = 0, request_started = 0, sapi_started = 0;
 
-#ifdef PHP_WIN32
-    if(micro_check_self(micro_get_filename_w(), sfx_filesize)){
-        return FAILURE;
-    }
-#else
-    if(micro_check_self(self_filename_mb, sfx_filesize)){
-        return FAILURE;
-    }
-#endif
+
 
 #if defined(PHP_WIN32) && !defined(PHP_MICRO_WIN32_NO_CONSOLE)
 	php_win32_console_fileno_set_vt100(STDOUT_FILENO, TRUE);
@@ -500,10 +468,6 @@ int main(int argc, char *argv[])
         //sapi_module->ini_entries = ini_entries;
 
         sapi_module->executable_location = argv[0];
-
-        ini_entries = malloc(sizeof(HARDCODED_INI));
-		memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
-		ini_entries_len += sizeof(HARDCODED_INI) - 2;
 
 	    sapi_module->ini_entries = ini_entries;
 

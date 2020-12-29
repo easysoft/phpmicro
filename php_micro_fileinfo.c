@@ -35,7 +35,146 @@ limitations under the License.
 #error because we donot support that platform yet
 #endif
 
+// do we need uint64_t for sfx size?
+static uint32_t _final_sfx_filesize = 0;
+uint32_t _micro_get_sfx_filesize();
 uint32_t micro_get_sfx_filesize(){
+    return _final_sfx_filesize;
+}
+
+typedef struct _ext_ini_header_t {
+    uint8_t magic[4];
+    uint8_t len[4];
+} ext_ini_header_t;
+
+struct _ext_ini {
+    size_t size;
+    char *data;
+} micro_ext_ini = {
+    .size = 0,
+    .data = NULL
+};
+
+// shabby endian-independent check
+#define checkmagic(var) (var[0] != PHP_MICRO_INIMARK[0] || \
+            var[1] != PHP_MICRO_INIMARK[1] || \
+            var[2] != PHP_MICRO_INIMARK[2] || \
+            var[3] != PHP_MICRO_INIMARK[3])
+
+#ifdef PHP_WIN32
+const wchar_t* micro_get_filename_w();
+#endif // PHP_WIN32
+
+#ifdef PHP_WIN32
+int micro_fileinfo_init(){
+    int ret = 0;
+    LPCWSTR self_path = micro_get_filename_w();
+    uint32_t sfx_filesize = _micro_get_sfx_filesize();
+    HANDLE handle = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+    if(INVALID_HANDLE_VALUE == handle){
+        ret = FAILURE;
+        goto end;
+    }
+    DWORD filesize = GetFileSize(handle, NULL);
+    printf("%d, %d\n", sfx_filesize, filesize);
+    if (filesize <= sfx_filesize){
+		fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
+        ret = FAILURE;
+        goto end;
+    }
+#define seekfile(x) do { SetFilePointer(handle, x, 0, FILE_BEGIN); } while(0)
+#define readfile(dest, size, red) do { ReadFile(handle, dest, size, &red, NULL); } while(0)
+#define closefile() do { if (INVALID_HANDLE_VALUE != handle){ \
+        CloseHandle(handle); \
+    } } while(0)
+#else
+int micro_fileinfo_init(){
+    int ret = 0;
+    const char* self_path = micro_get_filename();
+    uint32_t sfx_filesize = _micro_get_sfx_filesize();
+    int fd = open(self_path, O_RDONLY);
+    if(-1 == fd){
+        // TODO: tell failed here
+        ret = errno;
+        goto end;
+    }
+    struct stat stats;
+    ret = stat(self_path, &stats);
+    if(-1 == ret){
+        // TODO: tell failed here
+        ret = errno;
+        goto end;
+    }
+    if(stats.st_size <= sfx_filesize){
+        fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
+        ret = FAILURE;
+        goto end;
+    }
+#define seekfile(x) do { lseek(fd, x, SEEK_SET); } while(0)
+#define readfile(dest, size, red) do { red = read(fd, dest, size); } while(0)
+#define closefile() do { if (-1 != fd){ close(fd); } } while(0)
+#endif // PHP_WIN32
+    size_t len = 0;
+    char * ext_ini = NULL;
+    ext_ini_header_t ext_ini_header = {0};
+    if (filesize <= sfx_filesize + sizeof(ext_ini_header)){
+        ret = FAILURE;
+        goto end;
+    }
+    // we may have extra ini configs.
+    seekfile(sfx_filesize);
+    DWORD red = 0;
+    readfile(&ext_ini_header, sizeof(ext_ini_header), red);
+    if(sizeof(ext_ini_header) != red){
+        // cannot read file
+        ret = errno;
+        goto end;
+    }
+
+    if(checkmagic(ext_ini_header.magic)){
+        // bad magic, not an extra ini
+        ret = SUCCESS;
+        goto end;
+    }
+    // shabby ntohl
+    len = (ext_ini_header.len[0] << 24) +
+        (ext_ini_header.len[1] << 16) +
+        (ext_ini_header.len[2] << 8) +
+        ext_ini_header.len[3];
+    dbgprintf("len is %d\n", len);
+    if(filesize <= sfx_filesize + sizeof(ext_ini_header) + len){
+        // bad len, not an extra ini
+        ret = SUCCESS;
+        len = 0;
+        goto end;
+    }
+    micro_ext_ini.data = malloc(len+2);
+    readfile(micro_ext_ini.data, len, red);
+    if(len != red){
+        // cannot read file
+        ret = errno;
+        len = 0;
+        free(micro_ext_ini.data);
+        micro_ext_ini.data = NULL;
+        goto end;
+    }
+    // two '\0's like hardcoden inis
+    micro_ext_ini.data[len] = '\0';
+    micro_ext_ini.data[len + 1] = '\0';
+    dbgprintf("using ext ini %s\n", micro_ext_ini.data);
+    micro_ext_ini.size = len + 1;
+    len += sizeof(ext_ini_header_t);
+    
+    end:
+    _final_sfx_filesize = sfx_filesize + len;
+    closefile();
+    return ret;
+}
+
+/*
+*   _micro_get_sfx_filesize - get (real) sfx size using resource(win) / 2 stage build constant (others)
+*/
+uint32_t _micro_get_sfx_filesize(){
     static uint32_t _sfx_filesize = SFX_FILESIZE;
 #ifdef PHP_WIN32
     dbgprintf("_sfx_filesize: %d, %p\n",_sfx_filesize, &_sfx_filesize);
@@ -64,6 +203,7 @@ uint32_t micro_get_sfx_filesize(){
 }
 
 #ifdef PHP_WIN32
+
 const wchar_t* micro_get_filename_w(){
     static LPWSTR self_filename = NULL;
     //dbgprintf("fuck %S\n", self_filename);

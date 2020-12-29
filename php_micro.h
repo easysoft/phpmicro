@@ -53,4 +53,6 @@ limitations under the License.
 # define MICRO_SFX_EXPORT __attribute__((visibility ("default")))
 #endif
 
+#define PHP_MICRO_INIMARK ((uint8_t[4]) {0xfd, 0xf6, 0x69, 0xe6})
+
 #endif // _PHP_MICRO_H

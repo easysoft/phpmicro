@@ -19,21 +19,18 @@ limitations under the License.
 #include <stdint.h>
 
 #include "php.h"
-//#include "ext/ffi/php_ffi.h"
 
 #include "php_micro.h"
 
-#ifdef PHP_WIN32
+#if defined(PHP_WIN32) && defined(_DEBUG)
 
 # include <windows.h>
 # include <psapi.h>
 
+
 HANDLE hOut, hErr;
 
-/*
-*   micro_init - prepare hErr and hOut for _myprintf
-*/
-int micro_init(void){
+int micro_helper_init(void){
     hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     if(INVALID_HANDLE_VALUE == hOut){
         wprintf(L"failed get output handle\n");
@@ -48,12 +45,10 @@ int micro_init(void){
 }
 
 /*
-*   mysprintf - a swprintf(3) like implemention for windows
+*   micro_sprintf - a swprintf(3) like implemention for windows
+*   only for debug in ffi calling procedure
 */
-//#ifdef _DEBUG
-//__declspec(dllexport) __declspec(noinline)
-//#endif
-wchar_t * mysprintf(const wchar_t * fmt, ...){
+MICRO_SFX_EXPORT wchar_t * micro_sprintf(const wchar_t * fmt, ...){
     LPVOID pBuf = NULL;
     va_list args;
     va_start(args, fmt);
@@ -72,7 +67,11 @@ wchar_t * mysprintf(const wchar_t * fmt, ...){
     return pBuf;
 }
 
-MICRO_SFX_EXPORT int micro_format_output_w(const wchar_t * fmt, ...){
+/*
+*   micro_wprintf - a wprintf(3) like implemention for windows
+*   only for debug in ffi calling procedure
+*/
+MICRO_SFX_EXPORT int micro_wprintf(const wchar_t * fmt, ...){
     LPVOID pBuf = NULL;
     va_list args;
     va_start(args, fmt);
@@ -94,11 +93,6 @@ MICRO_SFX_EXPORT int micro_format_output_w(const wchar_t * fmt, ...){
     return lenWords;
 }
 
-#endif // PHP_WIN32
-
-
-#ifdef _DEBUG
-#ifdef PHP_WIN32
 PHP_FUNCTION(micro_enum_modules){
     HMODULE hMods[1024];
     HANDLE hProcess = GetCurrentProcess();
@@ -123,16 +117,6 @@ PHP_FUNCTION(micro_enum_modules){
     }
     RETURN_TRUE;
 }
-#endif // PHP_WIN32
-// debug use
-int dbgprintf(const char * fmt, ...){
-    va_list args;
-    va_start(args, fmt);
-    //_setmode( _fileno( stdout ), _O_U16TEXT );
-    int ret = vprintf(fmt, args);
-    va_end(args);
-    return ret;
-}
 
 PHP_FUNCTION(micro_update_extension_dir){
     char *new_dir;
@@ -143,7 +127,7 @@ PHP_FUNCTION(micro_update_extension_dir){
 		Z_PARAM_STRING(new_dir, new_dir_len)
 	ZEND_PARSE_PARAMETERS_END();
 
-    dbgprintf("updating %s as extension_dir\n", new_dir);
+    printf("updating %s as extension_dir\n", new_dir);
 
     if(!called){
         // first call here
@@ -153,10 +137,14 @@ PHP_FUNCTION(micro_update_extension_dir){
     }
     PG(extension_dir) = strdup(new_dir);
 
-    dbgprintf("now is %s\n", PG(extension_dir));
+    printf("now is %s\n", PG(extension_dir));
     RETURN_TRUE;
 }
-MICRO_SFX_EXPORT int fuckcall(int(* func)(int), int input){
+#endif //defined(PHP_WIN32) && defined(_DEBUG)
+
+// ffi debug functions here
+
+MICRO_SFX_EXPORT int testcall(int(* func)(int), int input){
     printf("call %p with arg %d\n", func, input);
     int ret = func(input);
     printf("func(%d) = %d\n", input, ret);
@@ -182,15 +170,22 @@ MICRO_SFX_EXPORT void inspect(void* buf, int len){
     }
 }
 
-MICRO_SFX_EXPORT void miaomiaomiao(void){
-#define test(x) printf("match \"" x "\" : %d\n", match_format(L ## x, sizeof(x)));
-    //test("%d!!");
-    //test("%-11.012lld!!");
-    //test("%%!!!");
-    //test("%!!!");
-    //myprintf(L"测试\n");
+MICRO_SFX_EXPORT void emptyfunc(void){
+
 }
-#endif // _DEBUG
+
+/*
+*   dbgprintf - a printf(3) wrapper
+*   only for debug print
+*/
+MICRO_SFX_EXPORT int dbgprintf(const char * fmt, ...){
+    va_list args;
+    va_start(args, fmt);
+    //_setmode( _fileno( stdout ), _O_U16TEXT );
+    int ret = vprintf(fmt, args);
+    va_end(args);
+    return ret;
+}
 
 PHP_FUNCTION(micro_version){
     array_init(return_value);
