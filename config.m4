@@ -75,6 +75,8 @@ dnl prepare stat command
   PHP_SUBST(MICRO_2STAGE_OBJS)
   PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE) -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), MICRO_2STAGE_OBJS)
 
+  OVERALL_TARGET="$OVERALL_TARGETS \$(SAPI_MICRO_PATH) \$(MICRO_EXES)"  
+
   case $host_alias in
   *aix*)
     AC_MSG_ERROR(not yet support aix)

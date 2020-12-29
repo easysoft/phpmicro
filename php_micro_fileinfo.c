@@ -35,6 +35,16 @@ limitations under the License.
 #error because we donot support that platform yet
 #endif
 
+#ifndef PHP_WIN32
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#endif // ndef PHP_WIN32
+
+const char * micro_get_filename();
+
 // do we need uint64_t for sfx size?
 static uint32_t _final_sfx_filesize = 0;
 uint32_t _micro_get_sfx_filesize();
@@ -90,6 +100,7 @@ int micro_fileinfo_init(){
 #else
 int micro_fileinfo_init(){
     int ret = 0;
+    size_t len = 0;
     const char* self_path = micro_get_filename();
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
     int fd = open(self_path, O_RDONLY);
@@ -105,7 +116,8 @@ int micro_fileinfo_init(){
         ret = errno;
         goto end;
     }
-    if(stats.st_size <= sfx_filesize){
+    size_t filesize = stats.st_size;
+    if(filesize <= sfx_filesize){
         fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
         goto end;
@@ -114,8 +126,6 @@ int micro_fileinfo_init(){
 #define readfile(dest, size, red) do { red = read(fd, dest, size); } while(0)
 #define closefile() do { if (-1 != fd){ close(fd); } } while(0)
 #endif // PHP_WIN32
-    size_t len = 0;
-    char * ext_ini = NULL;
     ext_ini_header_t ext_ini_header = {0};
     if (filesize <= sfx_filesize + sizeof(ext_ini_header)){
         ret = FAILURE;
@@ -123,7 +133,7 @@ int micro_fileinfo_init(){
     }
     // we may have extra ini configs.
     seekfile(sfx_filesize);
-    DWORD red = 0;
+    uint32_t red = 0;
     readfile(&ext_ini_header, sizeof(ext_ini_header), red);
     if(sizeof(ext_ini_header) != red){
         // cannot read file
@@ -169,6 +179,9 @@ int micro_fileinfo_init(){
     _final_sfx_filesize = sfx_filesize + len;
     closefile();
     return ret;
+#undef seekfile
+#undef readfile
+#undef closefile
 }
 
 /*
