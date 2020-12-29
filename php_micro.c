@@ -486,10 +486,11 @@ int main(int argc, char *argv[])
     zend_try{
         sapi_module->ini_defaults = sapi_micro_ini_defaults;
         // this should not be settable
-        // TODO: macro to configure
+        // TODO: macro to configure or special things
         //sapi_module->php_ini_path_override = ini_path_override;
         sapi_module->phpinfo_as_text = 1;
         sapi_module->php_ini_ignore_cwd = 1;
+        sapi_module->php_ini_ignore = 1;
         dbgprintf("start sapi\n");
         sapi_startup(sapi_module);
         sapi_started = 1;
@@ -523,6 +524,9 @@ int main(int argc, char *argv[])
             dbgprintf("Could not open self.\n");
             goto err;
         }
+
+		// no chdir as cli do
+		SG(options) |= SAPI_OPTION_NO_CHDIR;
 
         zend_stream_init_fp(&file_handle, fp, self_filename_mb);
 
