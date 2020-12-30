@@ -4,7 +4,7 @@ $stderr = fopen("php://stderr", "r+b");
 $mainprog = NULL;
 $inisets = "";
 $arg0 = array_shift($argv);
-for($arg = array_shift($argv); count($argv) >= 0; $arg = array_shift($argv)){
+for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     if("-n" === $arg){
         // do nothing due to micro donot consume php.ini.
         continue;
@@ -19,14 +19,26 @@ for($arg = array_shift($argv); count($argv) >= 0; $arg = array_shift($argv)){
         }else{
             $def = substr($arg, 2);
         }
-        $inisets .= $def . "\n";
+        $kv = explode("=", $def, 2);
+        if(count($kv) > 1){
+            $inisets .= $kv[0] . '="' . $kv[1] . "\"\n";
+        }else{
+            $inisets .= $def . "\n";
+        }
         continue;
     }
     if("-f" === $arg){
         $mainprog = array_shift($argv);
+        continue;
+    }
+    if("--" === $arg){
         break;
     }
-    $mainprog = $arg;
+    if(!$mainprog){
+        $mainprog = $arg;
+    }else {
+        array_unshift($argv, $arg);
+    }
     break;
 }
 if(!$mainprog){
@@ -55,10 +67,8 @@ do{
 fclose($out);
 chmod($outpath, 0755);
 
-if(extension_loaded("pcntl")){
-    pcntl_exec($outpath, $argv);
-}else{
-    $ret = NULL;
-    passthru($outpath. " " . implode(" ", $argv), $ret);
-    exit($ret);
-}
+$ret = NULL;
+passthru($outpath . " " . implode(" ", $argv), $ret);
+// remove temp executable
+unlink($outpath);
+exit($ret);
