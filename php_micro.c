@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
 			CONST_CS, 0);*/
         
         // ?
-        //zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+        zend_is_auto_global_str(ZEND_STRL("_SERVER"));
 
         PG(during_request_startup) = 0;
 
