@@ -4,10 +4,11 @@ $mainpath = NULL;
 $inisets = "";
 $orig_argv = $argv;
 $arg0 = array_shift($argv);
-$errf = STDERR;
-//$errf = fopen("/tmp/fakecmd.log", "ab");
+//$errf = STDERR;
+$errf = fopen("/tmp/fakecmd.log", "ab+");
 function argvalue2($arg){
     global $argv;
+    global $errf;
     if(strlen($arg) === 2){
         $v = array_shift($argv);
     }else{
@@ -48,8 +49,13 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                 addinifile($v);
             }
             goto gonext;
+        case "-C":
+        case "-q":
         case "-n":
-            // do nothing due to micro donot consume php.ini.
+            // do nothing due to micro donot
+            //  - chdir
+            //  - output HTTP header
+            //  - consume php.ini.
             goto gonext;
         case "-d":
             $def = argvalue2($arg);
@@ -71,6 +77,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             $modeset = true;
             $mainpath= argvalue2($arg);
             goto gonext;
+        case "-?":
         case "-h":
             fprintf(STDOUT, "no help yet\n");
             exit(0);
@@ -170,6 +177,7 @@ if(!$modeset){
 }
 
 set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
+    global $errf;
     $fullcmd = implode(" ", $orig_argv);
     fprintf($errf, "$errstr \n at $errfile:$errline\n while processing cmd:\n $fullcmd\n");
     exit(1);
