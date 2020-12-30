@@ -35,4 +35,4 @@ micro_test: $(SAPI_MICRO_PATH) $(MICRO_EXES)
 	TEST_PHP_SRCDIR=$(top_srcdir) \
 	CC="$(CC)" \
 		$(MICRO_FAKECMD) -n $(PHP_TEST_SETTINGS) $(top_srcdir)/run-tests.php -n $(TESTS); \
-	exit $$?; \
+	exit $$?;
