@@ -75,11 +75,13 @@ struct _ext_ini {
 const wchar_t* micro_get_filename_w();
 #endif // PHP_WIN32
 
-#ifdef PHP_WIN32
+
 int micro_fileinfo_init(){
     int ret = 0;
-    LPCWSTR self_path = micro_get_filename_w();
+    size_t len = 0;
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
+#ifdef PHP_WIN32
+    LPCWSTR self_path = micro_get_filename_w();
     HANDLE handle = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
     if(INVALID_HANDLE_VALUE == handle){
         ret = FAILURE;
@@ -98,11 +100,7 @@ int micro_fileinfo_init(){
         CloseHandle(handle); \
     } } while(0)
 #else
-int micro_fileinfo_init(){
-    int ret = 0;
-    size_t len = 0;
     const char* self_path = micro_get_filename();
-    uint32_t sfx_filesize = _micro_get_sfx_filesize();
     int fd = open(self_path, O_RDONLY);
     if(-1 == fd){
         // TODO: tell failed here
