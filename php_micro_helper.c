@@ -118,6 +118,9 @@ PHP_FUNCTION(micro_enum_modules){
     RETURN_TRUE;
 }
 
+#endif //defined(PHP_WIN32) && defined(_DEBUG)
+
+#ifdef _DEBUG
 PHP_FUNCTION(micro_update_extension_dir){
     char *new_dir;
 	size_t new_dir_len;
@@ -140,7 +143,6 @@ PHP_FUNCTION(micro_update_extension_dir){
     printf("now is %s\n", PG(extension_dir));
     RETURN_TRUE;
 }
-#endif //defined(PHP_WIN32) && defined(_DEBUG)
 
 // ffi debug functions here
 
@@ -186,6 +188,7 @@ MICRO_SFX_EXPORT int dbgprintf(const char * fmt, ...){
     va_end(args);
     return ret;
 }
+#endif //_DEBUG
 
 PHP_FUNCTION(micro_version){
     array_init(return_value);

@@ -310,17 +310,16 @@ static void sapi_micro_ini_defaults(HashTable *configuration_hash)
 /* }}} */
 
 #ifdef _DEBUG
-/* {{{ arginfo ext/standard/dl.c */
+
 ZEND_BEGIN_ARG_INFO(arginfo_dl, 0)
     ZEND_ARG_INFO(0, extension_filename)
 ZEND_END_ARG_INFO()
-/* }}} */
+ZEND_BEGIN_ARG_INFO(arginfo_micro_update_extension_dir, 0)
+    ZEND_ARG_INFO(0, new_dir)
+ZEND_END_ARG_INFO()
 
 #ifdef PHP_WIN32
 ZEND_BEGIN_ARG_INFO(arginfo_micro_enum_modules, 0)
-ZEND_END_ARG_INFO()
-ZEND_BEGIN_ARG_INFO(arginfo_micro_update_extension_dir, 0)
-    ZEND_ARG_INFO(0, new_dir)
 ZEND_END_ARG_INFO()
 #endif // PHP_WIN32
 
