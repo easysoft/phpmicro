@@ -149,7 +149,7 @@ int micro_fileinfo_init(){
         (ext_ini_header.len[1] << 16) +
         (ext_ini_header.len[2] << 8) +
         ext_ini_header.len[3];
-    dbgprintf("len is %d\n", len);
+    dbgprintf("len is %zd\n", len);
     if(filesize <= sfx_filesize + sizeof(ext_ini_header) + len){
         // bad len, not an extra ini
         ret = SUCCESS;
