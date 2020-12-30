@@ -8,3 +8,7 @@ these tests may be skipped in command line via modiffied run-tests.php
  - tests/basic/bug71273.phpt: TODO: write micro flavor test like this
  - tests/basic/consistent_float_string_casts.phpt: setlocale(3) may not be usable in static build
  - tests/lang/bug30638.phpt: setlocale(3) may not be usable in static build
+
+these tests may failed if not using cli_checks.patch because of php internel sapi name checks.
+
+ - tests/lang/bug45392.phpt

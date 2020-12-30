@@ -1,0 +1,126 @@
+--- php-8.0.0/main/main.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/main/main.c	2020-12-30 21:06:37.354552051 +0800
+@@ -461,7 +461,8 @@ static PHP_INI_DISP(display_errors_mode)
+ 	mode = php_get_display_errors_mode(tmp_value, tmp_value_length);
+ 
+ 	/* Display 'On' for other SAPIs instead of STDOUT or STDERR */
+-	cgi_or_cli = (!strcmp(sapi_module.name, "cli") || !strcmp(sapi_module.name, "cgi") || !strcmp(sapi_module.name, "phpdbg"));
++	cgi_or_cli = (!strcmp(sapi_module.name, "micro") || !strcmp(sapi_module.name, "cli") ||
++           !strcmp(sapi_module.name, "cgi") || !strcmp(sapi_module.name, "phpdbg"));
+ 
+ 	switch (mode) {
+ 		case PHP_DISPLAY_ERRORS_STDERR:
+@@ -1293,7 +1294,8 @@ static ZEND_COLD void php_error_cb(int o
+ 					}
+ 				} else {
+ 					/* Write CLI/CGI errors to stderr if display_errors = "stderr" */
+-					if ((!strcmp(sapi_module.name, "cli") || !strcmp(sapi_module.name, "cgi") || !strcmp(sapi_module.name, "phpdbg")) &&
++					if ((!strcmp(sapi_module.name, "micro") ||
++                            !strcmp(sapi_module.name, "cli") || !strcmp(sapi_module.name, "cgi") || !strcmp(sapi_module.name, "phpdbg")) &&
+ 						PG(display_errors) == PHP_DISPLAY_ERRORS_STDERR
+ 					) {
+ 						fprintf(stderr, "%s: %s in %s on line %" PRIu32 "\n", error_type_str, ZSTR_VAL(message), error_filename, error_lineno);
+--- php-8.0.0/ext/ffi/ffi.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/ext/ffi/ffi.c	2020-12-30 21:05:08.066334065 +0800
+@@ -4884,7 +4884,7 @@ ZEND_MINIT_FUNCTION(ffi)
+ 
+ 	REGISTER_INI_ENTRIES();
+ 
+-	FFI_G(is_cli) = strcmp(sapi_module.name, "cli") == 0;
++	FFI_G(is_cli) = strcmp(sapi_module.name, "micro") == 0 || strcmp(sapi_module.name, "cli") == 0;
+ 
+ 	INIT_NS_CLASS_ENTRY(ce, "FFI", "Exception", NULL);
+ 	zend_ffi_exception_ce = zend_register_internal_class_ex(&ce, zend_ce_error);
+--- php-8.0.0/ext/pcre/php_pcre.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/ext/pcre/php_pcre.c	2020-12-30 21:05:08.066334065 +0800
+@@ -282,7 +282,7 @@ static PHP_GINIT_FUNCTION(pcre) /* {{{ *
+ 
+ 	/* If we're on the CLI SAPI, there will only be one request, so we don't need the
+ 	 * cache to survive after RSHUTDOWN. */
+-	pcre_globals->per_request_cache = strcmp(sapi_module.name, "cli") == 0;
++	pcre_globals->per_request_cache = strcmp(sapi_module.name, "micro") == 0 || strcmp(sapi_module.name, "cli") == 0;
+ 	if (!pcre_globals->per_request_cache) {
+ 		zend_hash_init(&pcre_globals->pcre_cache, 0, NULL, php_free_pcre_cache, 1);
+ 	}
+--- php-8.0.0/ext/readline/readline_cli.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/ext/readline/readline_cli.c	2020-12-30 21:05:08.066334065 +0800
+@@ -721,7 +721,7 @@ typedef cli_shell_callbacks_t *(__cdecl
+ 		get_cli_shell_callbacks get_callbacks; \
+ 		HMODULE hMod = GetModuleHandle("php.exe"); \
+ 		(cb) = NULL; \
+-		if (strlen(sapi_module.name) >= 3 && 0 == strncmp("cli", sapi_module.name, 3)) { \
++		if (strlen(sapi_module.name) >= 3 && (0 == strncmp("micro", sapi_module.name, 5) || 0 == strncmp("cli", sapi_module.name, 3))) { \
+ 			get_callbacks = (get_cli_shell_callbacks)GetProcAddress(hMod, "php_cli_get_shell_callbacks"); \
+ 			if (get_callbacks) { \
+ 				(cb) = get_callbacks(); \
+--- php-8.0.0/ext/standard/php_fopen_wrapper.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/ext/standard/php_fopen_wrapper.c	2020-12-30 21:05:08.066334065 +0800
+@@ -242,7 +242,7 @@ php_stream * php_stream_url_wrap_php(php
+ 			}
+ 			return NULL;
+ 		}
+-		if (!strcmp(sapi_module.name, "cli")) {
++		if (0 == strcmp(sapi_module.name, "micro") || 0 == strcmp(sapi_module.name, "cli")) {
+ 			static int cli_in = 0;
+ 			fd = STDIN_FILENO;
+ 			if (cli_in) {
+@@ -258,7 +258,7 @@ php_stream * php_stream_url_wrap_php(php
+ 		pipe_requested = 1;
+ #endif
+ 	} else if (!strcasecmp(path, "stdout")) {
+-		if (!strcmp(sapi_module.name, "cli")) {
++		if (0 == strcmp(sapi_module.name, "micro") || 0 == strcmp(sapi_module.name, "cli")) {
+ 			static int cli_out = 0;
+ 			fd = STDOUT_FILENO;
+ 			if (cli_out++) {
+@@ -274,7 +274,7 @@ php_stream * php_stream_url_wrap_php(php
+ 		pipe_requested = 1;
+ #endif
+ 	} else if (!strcasecmp(path, "stderr")) {
+-		if (!strcmp(sapi_module.name, "cli")) {
++		if (0 == strcmp(sapi_module.name, "micro") || 0 == strcmp(sapi_module.name, "cli")) {
+ 			static int cli_err = 0;
+ 			fd = STDERR_FILENO;
+ 			if (cli_err++) {
+@@ -295,7 +295,7 @@ php_stream * php_stream_url_wrap_php(php
+ 		zend_long  fildes_ori;
+ 		int		   dtablesize;
+ 
+-		if (strcmp(sapi_module.name, "cli")) {
++		if (0 != strcmp(sapi_module.name, "cli") && 0 != strcmp(sapi_module.name, "micro")) {
+ 			if (options & REPORT_ERRORS) {
+ 				php_error_docref(NULL, E_WARNING, "Direct access to file descriptors is only available from command-line PHP");
+ 			}
+--- php-8.0.0/ext/standard/proc_open.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/ext/standard/proc_open.c	2020-12-30 21:05:08.066334065 +0800
+@@ -1136,7 +1136,7 @@ PHP_FUNCTION(proc_open)
+ 	}
+ 
+ 	dwCreateFlags = NORMAL_PRIORITY_CLASS;
+-	if(strcmp(sapi_module.name, "cli") != 0) {
++	if(strcmp(sapi_module.name, "cli") != 0 && 0 != strcmp(sapi_module.name, "micro")) {
+ 		dwCreateFlags |= CREATE_NO_WINDOW;
+ 	}
+ 	if (create_process_group) {
+--- php-8.0.0/TSRM/tsrm_win32.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/TSRM/tsrm_win32.c	2020-12-30 21:05:08.066334065 +0800
+@@ -531,7 +531,7 @@ TSRM_API FILE *popen_ex(const char *comm
+ 	}
+ 
+ 	dwCreateFlags = NORMAL_PRIORITY_CLASS;
+-	if (strcmp(sapi_module.name, "cli") != 0) {
++	if (strcmp(sapi_module.name, "cli") != 0 && 0 != strcmp(sapi_module.name, "micro")) {
+ 		dwCreateFlags |= CREATE_NO_WINDOW;
+ 	}
+ 
+--- php-8.0.0/win32/console.c	2020-11-25 01:04:03.000000000 +0800
++++ php-8.0.0-micro/win32/console.c	2020-12-30 21:05:08.069667331 +0800
+@@ -111,6 +111,7 @@ PHP_WINUTIL_API BOOL php_win32_console_i
+ 
+ PHP_WINUTIL_API BOOL php_win32_console_is_cli_sapi(void)
+ {/*{{{*/
+-	return strlen(sapi_module.name) >= sizeof("cli") - 1 && !strncmp(sapi_module.name, "cli", sizeof("cli") - 1);
++	return (strlen(sapi_module.name) >= sizeof("cli") - 1 && !strncmp(sapi_module.name, "cli", sizeof("cli") - 1) ) ||
++	    (strlen(sapi_module.name) >= sizeof("micro") - 1 && !strncmp(sapi_module.name, "micro", sizeof("micro") - 1) );
+ }/*}}}*/
+ 

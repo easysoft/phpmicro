@@ -232,6 +232,7 @@ if(isset($mainpath)){
     // switch php and exe
     rename($mainpath, $mainpath . ".orig");
     rename($outpath, $mainpath);
+    //copy($mainpath, $outpath);
     passthru($mainpath . " " . implode(" ", $argv), $ret);
     rename($mainpath . ".orig", $mainpath);
 }else{

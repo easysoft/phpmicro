@@ -31,7 +31,8 @@ micro_test: $(SAPI_MICRO_PATH) $(MICRO_EXES)
 		echo sanity check for micro.sfx failed, the sfx generated may be corrupt. >&2 ;\
 		exit 1;\
 	}
-	@TEST_PHP_EXECUTABLE=$(MICRO_FAKECMD) \
+	@SKIP_IO_CAPTURE_TESTS=yes \
+	TEST_PHP_EXECUTABLE=$(MICRO_FAKECMD) \
 	TEST_PHP_SRCDIR=$(top_srcdir) \
 	CC="$(CC)" \
 		$(MICRO_FAKECMD) -n $(PHP_TEST_SETTINGS) $(top_srcdir)/run-tests.php -n $(TESTS); \
