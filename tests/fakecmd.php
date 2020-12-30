@@ -1,8 +1,8 @@
 <?php
 // fake a cli command
-$stderr = fopen("php://stderr", "r+b");
 $mainprog = NULL;
 $inisets = "";
+$orig_argv = $argv;
 $arg0 = array_shift($argv);
 for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     if("-n" === $arg){
@@ -13,7 +13,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
         if(2 === strlen($arg)){
             $def = array_shift($argv);
             if(NULL === $def){
-                fprintf($stderr, "define waht?\n");
+                fprintf(STDERR, "define waht?\n");
                 exit(1);
             }
         }else{
@@ -42,9 +42,15 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     break;
 }
 if(!$mainprog){
-    fprintf($stderr, "run waht?\n");
+    fprintf(STDERR, "run waht?\n");
     exit(1);
 }
+
+set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
+    $fullcmd = implode(" ", $orig_argv);
+    fprintf(STDERR, "$errstr \n at $errfile:$errline\n while processing cmd:\n $fullcmd\n");
+    exit(1);
+});
 
 $outpath = $mainprog . ".exe";
 $out = fopen($outpath, "wb");
