@@ -50,7 +50,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             // do nothing due to micro donot consume php.ini.
             goto gonext;
         case "-d":
-            $def = argvalue2($argv);
+            $def = argvalue2($arg);
             $kv = explode("=", $def, 2);
             if(count($kv) > 1){
                 $inisets .= $kv[0] . '="' . $kv[1] . "\"\n";
