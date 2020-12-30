@@ -353,6 +353,47 @@ static const zend_function_entry additional_functions[] = {
 	PHP_FE_END
 };
 
+static void micro_register_file_handles(void) /* {{{ */
+{
+	php_stream *s_in, *s_out, *s_err;
+	php_stream_context *sc_in=NULL, *sc_out=NULL, *sc_err=NULL;
+	zend_constant ic, oc, ec;
+
+	s_in  = php_stream_open_wrapper_ex("php://stdin",  "rb", 0, NULL, sc_in);
+	s_out = php_stream_open_wrapper_ex("php://stdout", "wb", 0, NULL, sc_out);
+	s_err = php_stream_open_wrapper_ex("php://stderr", "wb", 0, NULL, sc_err);
+
+	if (s_in==NULL || s_out==NULL || s_err==NULL) {
+		if (s_in) php_stream_close(s_in);
+		if (s_out) php_stream_close(s_out);
+		if (s_err) php_stream_close(s_err);
+		return;
+	}
+
+#if PHP_DEBUG
+	/* do not close stdout and stderr */
+	s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+	s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+#endif
+
+	php_stream_to_zval(s_in,  &ic.value);
+	php_stream_to_zval(s_out, &oc.value);
+	php_stream_to_zval(s_err, &ec.value);
+
+	ZEND_CONSTANT_SET_FLAGS(&ic, CONST_CS, 0);
+	ic.name = zend_string_init_interned("STDIN", sizeof("STDIN")-1, 0);
+	zend_register_constant(&ic);
+
+	ZEND_CONSTANT_SET_FLAGS(&oc, CONST_CS, 0);
+	oc.name = zend_string_init_interned("STDOUT", sizeof("STDOUT")-1, 0);
+	zend_register_constant(&oc);
+
+	ZEND_CONSTANT_SET_FLAGS(&ec, CONST_CS, 0);
+	ec.name = zend_string_init_interned("STDERR", sizeof("STDERR")-1, 0);
+	zend_register_constant(&ec);
+}
+/* }}} */
+
 /* {{{ main
  */
 #ifdef PHP_MICRO_WIN32_NO_CONSOLE
@@ -512,6 +553,8 @@ int main(int argc, char *argv[])
         dbgprintf("done rinit\n");
         request_started = 1;
 
+		// add STD{OUT, IN, ERR} constants
+		micro_register_file_handles();
         CG(skip_shebang) = 1;
         /*zend_register_bool_constant(
 			ZEND_STRL("PHP_CLI_PROCESS_TITLE"),
