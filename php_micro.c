@@ -54,7 +54,7 @@ BOOL php_win32_shutdown_random_bytes(void);
 BOOL php_win32_ioutil_init(void);
 void php_win32_init_gettimeofday(void);
 #else
-#   define php_select(m, r, w, e, t)	select(m, r, w, e, t)
+#   define php_select(m, r, w, e, t)    select(m, r, w, e, t)
 #   include<sys/stat.h>
 #   include<fcntl.h>
 #endif
@@ -70,12 +70,12 @@ void php_win32_init_gettimeofday(void);
 
 
 const char HARDCODED_INI[] =
-	"html_errors=0\n"
-	"register_argc_argv=1\n"
-	"implicit_flush=1\n"
-	"output_buffering=0\n"
-	"max_execution_time=0\n"
-	"max_input_time=-1\n\0";
+    "html_errors=0\n"
+    "register_argc_argv=1\n"
+    "implicit_flush=1\n"
+    "output_buffering=0\n"
+    "max_execution_time=0\n"
+    "max_input_time=-1\n\0";
 
 
 static char *php_self = "";
@@ -83,104 +83,104 @@ static char *script_filename = "";
 
 static inline int sapi_micro_select(php_socket_t fd)
 {
-	fd_set wfd;
-	struct timeval tv;
-	int ret;
+    fd_set wfd;
+    struct timeval tv;
+    int ret;
 
-	FD_ZERO(&wfd);
+    FD_ZERO(&wfd);
 
-	PHP_SAFE_FD_SET(fd, &wfd);
+    PHP_SAFE_FD_SET(fd, &wfd);
 
-	tv.tv_sec = (long)FG(default_socket_timeout);
-	tv.tv_usec = 0;
+    tv.tv_sec = (long)FG(default_socket_timeout);
+    tv.tv_usec = 0;
 
-	ret = php_select(fd+1, NULL, &wfd, NULL, &tv);
+    ret = php_select(fd+1, NULL, &wfd, NULL, &tv);
 
-	return ret != -1;
+    return ret != -1;
 }
 
 static void sapi_micro_register_variables(zval *track_vars_array) /* {{{ */
 {
-	size_t len;
-	char   *docroot = "";
+    size_t len;
+    char   *docroot = "";
 
-	/* In CGI mode, we consider the environment to be a part of the server
-	 * variables
-	 */
-	php_import_environment_variables(track_vars_array);
+    /* In CGI mode, we consider the environment to be a part of the server
+     * variables
+     */
+    php_import_environment_variables(track_vars_array);
 
-	/* Build the special-case PHP_SELF variable for the CLI version */
-	len = strlen(php_self);
-	if (sapi_module.input_filter(PARSE_SERVER, "PHP_SELF", &php_self, len, &len)) {
-		php_register_variable("PHP_SELF", php_self, track_vars_array);
-	}
-	if (sapi_module.input_filter(PARSE_SERVER, "SCRIPT_NAME", &php_self, len, &len)) {
-		php_register_variable("SCRIPT_NAME", php_self, track_vars_array);
-	}
-	/* filenames are empty for stdin */
-	len = strlen(script_filename);
-	if (sapi_module.input_filter(PARSE_SERVER, "SCRIPT_FILENAME", &script_filename, len, &len)) {
-		php_register_variable("SCRIPT_FILENAME", script_filename, track_vars_array);
-	}
-	if (sapi_module.input_filter(PARSE_SERVER, "PATH_TRANSLATED", &script_filename, len, &len)) {
-		php_register_variable("PATH_TRANSLATED", script_filename, track_vars_array);
-	}
-	/* just make it available */
-	len = 0U;
-	if (sapi_module.input_filter(PARSE_SERVER, "DOCUMENT_ROOT", &docroot, len, &len)) {
-		php_register_variable("DOCUMENT_ROOT", docroot, track_vars_array);
-	}
+    /* Build the special-case PHP_SELF variable for the CLI version */
+    len = strlen(php_self);
+    if (sapi_module.input_filter(PARSE_SERVER, "PHP_SELF", &php_self, len, &len)) {
+        php_register_variable("PHP_SELF", php_self, track_vars_array);
+    }
+    if (sapi_module.input_filter(PARSE_SERVER, "SCRIPT_NAME", &php_self, len, &len)) {
+        php_register_variable("SCRIPT_NAME", php_self, track_vars_array);
+    }
+    /* filenames are empty for stdin */
+    len = strlen(script_filename);
+    if (sapi_module.input_filter(PARSE_SERVER, "SCRIPT_FILENAME", &script_filename, len, &len)) {
+        php_register_variable("SCRIPT_FILENAME", script_filename, track_vars_array);
+    }
+    if (sapi_module.input_filter(PARSE_SERVER, "PATH_TRANSLATED", &script_filename, len, &len)) {
+        php_register_variable("PATH_TRANSLATED", script_filename, track_vars_array);
+    }
+    /* just make it available */
+    len = 0U;
+    if (sapi_module.input_filter(PARSE_SERVER, "DOCUMENT_ROOT", &docroot, len, &len)) {
+        php_register_variable("DOCUMENT_ROOT", docroot, track_vars_array);
+    }
 }
 
 static int php_micro_startup(sapi_module_struct *sapi_module) /* {{{ */
 {
-	if (php_module_startup(sapi_module, NULL, 0)==FAILURE) {
-		return FAILURE;
-	}
-	return SUCCESS;
+    if (php_module_startup(sapi_module, NULL, 0)==FAILURE) {
+        return FAILURE;
+    }
+    return SUCCESS;
 }
 
 int php_micro_module_shutdown_wrapper(sapi_module_struct *sapi_globals)
 {
-	php_module_shutdown();
-	return SUCCESS;
+    php_module_shutdown();
+    return SUCCESS;
 }
 
 static int sapi_micro_deactivate(void) /* {{{ */
 {
-	fflush(stdout);
-	if(SG(request_info).argv0) {
-		free(SG(request_info).argv0);
-		SG(request_info).argv0 = NULL;
-	}
-	return SUCCESS;
+    fflush(stdout);
+    if(SG(request_info).argv0) {
+        free(SG(request_info).argv0);
+        SG(request_info).argv0 = NULL;
+    }
+    return SUCCESS;
 }
 
 static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
 {
-	const char *ptr = str;
-	size_t remaining = str_length;
-	ssize_t ret;
+    const char *ptr = str;
+    size_t remaining = str_length;
+    ssize_t ret;
 
-	if (!str_length) {
-		return 0;
-	}
+    if (!str_length) {
+        return 0;
+    }
 /* todo: fix
-	if (cli_shell_callbacks.cli_shell_ub_write) {
-		size_t ub_wrote;
-		ub_wrote = cli_shell_callbacks.cli_shell_ub_write(str, str_length);
-		if (ub_wrote != (size_t) -1) {
-			return ub_wrote;
-		}
-	}
+    if (cli_shell_callbacks.cli_shell_ub_write) {
+        size_t ub_wrote;
+        ub_wrote = cli_shell_callbacks.cli_shell_ub_write(str, str_length);
+        if (ub_wrote != (size_t) -1) {
+            return ub_wrote;
+        }
+    }
 */
 
-	while (remaining > 0)
-	{
+    while (remaining > 0)
+    {
 /* TODO: fix
-	if (cli_shell_callbacks.cli_shell_write) {
-		cli_shell_callbacks.cli_shell_write(str, str_length);
-	}
+    if (cli_shell_callbacks.cli_shell_write) {
+        cli_shell_callbacks.cli_shell_write(str, str_length);
+    }
 */
 
 #ifdef PHP_WRITE_STDOUT
@@ -193,45 +193,45 @@ static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
             ret = -1;
         }
 #endif
-		if (ret < 0) {
+        if (ret < 0) {
 #ifndef PHP_MICRO_WIN32_NO_CONSOLE
-			EG(exit_status) = 255;
-			php_handle_aborted_connection();
+            EG(exit_status) = 255;
+            php_handle_aborted_connection();
 #endif
-			break;
-		}
-		ptr += ret;
-		remaining -= ret;
-	}
+            break;
+        }
+        ptr += ret;
+        remaining -= ret;
+    }
 
-	return (ptr - str);
+    return (ptr - str);
 }
 /* }}} */
 
 static void sapi_micro_flush(void *server_context) /* {{{ */
 {
-	/* Ignore EBADF here, it's caused by the fact that STDIN/STDOUT/STDERR streams
-	 * are/could be closed before fflush() is called.
-	 */
-	if (fflush(stdout)==EOF && errno!=EBADF) {
+    /* Ignore EBADF here, it's caused by the fact that STDIN/STDOUT/STDERR streams
+     * are/could be closed before fflush() is called.
+     */
+    if (fflush(stdout)==EOF && errno!=EBADF) {
 #ifndef PHP_MICRO_WIN32_NO_CONSOLE
-		php_handle_aborted_connection();
+        php_handle_aborted_connection();
 #endif
-	}
+    }
 }
 /* }}} */
 
 static int sapi_micro_header_handler(sapi_header_struct *h, sapi_header_op_enum op, sapi_headers_struct *s) /* {{{ */
 {
-	return 0;
+    return 0;
 }
 /* }}} */
 
 static int sapi_micro_send_headers(sapi_headers_struct *sapi_headers) /* {{{ */
 {
-	/* We do nothing here, this function is needed to prevent that the fallback
-	 * header handling is called. */
-	return SAPI_HEADER_SENT_SUCCESSFULLY;
+    /* We do nothing here, this function is needed to prevent that the fallback
+     * header handling is called. */
+    return SAPI_HEADER_SENT_SUCCESSFULLY;
 }
 /* }}} */
 
@@ -242,15 +242,15 @@ static void sapi_micro_send_header(sapi_header_struct *sapi_header, void *server
 
 static char* sapi_micro_read_cookies(void) /* {{{ */
 {
-	return NULL;
+    return NULL;
 }
 /* }}} */
 
 static void sapi_micro_log_message(const char *message, int syslog_type_int) /* {{{ */
 {
-	fprintf(stderr, "%s\n", message);
+    fprintf(stderr, "%s\n", message);
 #ifdef PHP_WIN32
-	fflush(stderr);
+    fflush(stderr);
 #endif
 }
 /* }}} */
@@ -259,38 +259,38 @@ static void sapi_micro_log_message(const char *message, int syslog_type_int) /* 
  */
 static sapi_module_struct micro_sapi_module = {
 #ifdef PHP_MICRO_FAKE_CLI
-	"cli",							/* name */
+    "cli",                            /* name */
 #else
-    "micro",						/* name */
+    "micro",                        /* name */
 #endif
-	"micro PHP sfx",               	/* pretty name */
+    "micro PHP sfx",                   /* pretty name */
 
-	php_micro_startup,				/* startup */
-	php_micro_module_shutdown_wrapper,	/* shutdown */
+    php_micro_startup,                /* startup */
+    php_micro_module_shutdown_wrapper,    /* shutdown */
 
-	NULL,							/* activate */
-	sapi_micro_deactivate,			/* deactivate */
+    NULL,                            /* activate */
+    sapi_micro_deactivate,            /* deactivate */
 
-	sapi_micro_ub_write,		    /* unbuffered write */
-	sapi_micro_flush,				/* flush */
-	NULL,							/* get uid */
-	NULL,							/* getenv */
+    sapi_micro_ub_write,            /* unbuffered write */
+    sapi_micro_flush,                /* flush */
+    NULL,                            /* get uid */
+    NULL,                            /* getenv */
 
-	php_error,						/* error handler */
+    php_error,                        /* error handler */
 
-	sapi_micro_header_handler,		/* header handler */
-	sapi_micro_send_headers,			/* send headers handler */
-	sapi_micro_send_header,			/* send header handler */
+    sapi_micro_header_handler,        /* header handler */
+    sapi_micro_send_headers,            /* send headers handler */
+    sapi_micro_send_header,            /* send header handler */
 
-	NULL,				            /* read POST data */
-	sapi_micro_read_cookies,          /* read Cookies */
+    NULL,                            /* read POST data */
+    sapi_micro_read_cookies,          /* read Cookies */
 
-	sapi_micro_register_variables,	/* register server variables */
-	sapi_micro_log_message,			/* Log message */
-	NULL,							/* Get request time */
-	NULL,							/* Child terminate */
+    sapi_micro_register_variables,    /* register server variables */
+    sapi_micro_log_message,            /* Log message */
+    NULL,                            /* Get request time */
+    NULL,                            /* Child terminate */
 
-	STANDARD_SAPI_MODULE_PROPERTIES
+    STANDARD_SAPI_MODULE_PROPERTIES
 };
 /* }}} */
 
@@ -298,36 +298,32 @@ static sapi_module_struct micro_sapi_module = {
 
 /* overwriteable ini defaults must be set in sapi_micro_ini_defaults() */
 #define INI_DEFAULT(name,value)\
-	ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value)-1, 1));\
-	zend_hash_str_update(configuration_hash, name, sizeof(name)-1, &tmp);\
+    ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value)-1, 1));\
+    zend_hash_str_update(configuration_hash, name, sizeof(name)-1, &tmp);\
 
 static void sapi_micro_ini_defaults(HashTable *configuration_hash)
 {
-	zval tmp;
-	INI_DEFAULT("report_zend_debug", "0");
-	INI_DEFAULT("display_errors", "1");
-	// TODO: use macro to determine this
-	INI_DEFAULT("ffi.enable", "1");
-    // debug only
-    INI_DEFAULT("phar.readonly", "0");
+    zval tmp;
+    INI_DEFAULT("report_zend_debug", "0");
+    INI_DEFAULT("display_errors", "1");
 }
 /* }}} */
 
 #ifdef _DEBUG
 /* {{{ arginfo ext/standard/dl.c */
 ZEND_BEGIN_ARG_INFO(arginfo_dl, 0)
-	ZEND_ARG_INFO(0, extension_filename)
+    ZEND_ARG_INFO(0, extension_filename)
 ZEND_END_ARG_INFO()
 /* }}} */
 
 #ifdef PHP_WIN32
 ZEND_BEGIN_ARG_INFO(arginfo_micro_enum_modules, 0)
 ZEND_END_ARG_INFO()
+ZEND_BEGIN_ARG_INFO(arginfo_micro_update_extension_dir, 0)
+    ZEND_ARG_INFO(0, new_dir)
+ZEND_END_ARG_INFO()
 #endif // PHP_WIN32
 
-ZEND_BEGIN_ARG_INFO(arginfo_micro_update_extension_dir, 0)
-	ZEND_ARG_INFO(0, new_dir)
-ZEND_END_ARG_INFO()
 #endif
 
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_sfx_filesize, 0)
@@ -350,47 +346,47 @@ static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_enum_modules, arginfo_micro_enum_modules)
 #endif // PHP_WIN32
 #endif // _DEBUG
-	PHP_FE_END
+    PHP_FE_END
 };
 
 static void micro_register_file_handles(void) /* {{{ */
 {
-	php_stream *s_in, *s_out, *s_err;
-	php_stream_context *sc_in=NULL, *sc_out=NULL, *sc_err=NULL;
-	zend_constant ic, oc, ec;
+    php_stream *s_in, *s_out, *s_err;
+    php_stream_context *sc_in=NULL, *sc_out=NULL, *sc_err=NULL;
+    zend_constant ic, oc, ec;
 
-	s_in  = php_stream_open_wrapper_ex("php://stdin",  "rb", 0, NULL, sc_in);
-	s_out = php_stream_open_wrapper_ex("php://stdout", "wb", 0, NULL, sc_out);
-	s_err = php_stream_open_wrapper_ex("php://stderr", "wb", 0, NULL, sc_err);
+    s_in  = php_stream_open_wrapper_ex("php://stdin",  "rb", 0, NULL, sc_in);
+    s_out = php_stream_open_wrapper_ex("php://stdout", "wb", 0, NULL, sc_out);
+    s_err = php_stream_open_wrapper_ex("php://stderr", "wb", 0, NULL, sc_err);
 
-	if (s_in==NULL || s_out==NULL || s_err==NULL) {
-		if (s_in) php_stream_close(s_in);
-		if (s_out) php_stream_close(s_out);
-		if (s_err) php_stream_close(s_err);
-		return;
-	}
+    if (s_in==NULL || s_out==NULL || s_err==NULL) {
+        if (s_in) php_stream_close(s_in);
+        if (s_out) php_stream_close(s_out);
+        if (s_err) php_stream_close(s_err);
+        return;
+    }
 
 #if PHP_DEBUG
-	/* do not close stdout and stderr */
-	s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
-	s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+    /* do not close stdout and stderr */
+    s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+    s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
 #endif
 
-	php_stream_to_zval(s_in,  &ic.value);
-	php_stream_to_zval(s_out, &oc.value);
-	php_stream_to_zval(s_err, &ec.value);
+    php_stream_to_zval(s_in,  &ic.value);
+    php_stream_to_zval(s_out, &oc.value);
+    php_stream_to_zval(s_err, &ec.value);
 
-	ZEND_CONSTANT_SET_FLAGS(&ic, CONST_CS, 0);
-	ic.name = zend_string_init_interned("STDIN", sizeof("STDIN")-1, 0);
-	zend_register_constant(&ic);
+    ZEND_CONSTANT_SET_FLAGS(&ic, CONST_CS, 0);
+    ic.name = zend_string_init_interned("STDIN", sizeof("STDIN")-1, 0);
+    zend_register_constant(&ic);
 
-	ZEND_CONSTANT_SET_FLAGS(&oc, CONST_CS, 0);
-	oc.name = zend_string_init_interned("STDOUT", sizeof("STDOUT")-1, 0);
-	zend_register_constant(&oc);
+    ZEND_CONSTANT_SET_FLAGS(&oc, CONST_CS, 0);
+    oc.name = zend_string_init_interned("STDOUT", sizeof("STDOUT")-1, 0);
+    zend_register_constant(&oc);
 
-	ZEND_CONSTANT_SET_FLAGS(&ec, CONST_CS, 0);
-	ec.name = zend_string_init_interned("STDERR", sizeof("STDERR")-1, 0);
-	zend_register_constant(&ec);
+    ZEND_CONSTANT_SET_FLAGS(&ec, CONST_CS, 0);
+    ec.name = zend_string_init_interned("STDERR", sizeof("STDERR")-1, 0);
+    zend_register_constant(&ec);
 }
 /* }}} */
 
@@ -408,7 +404,7 @@ int main(int argc, char *argv[])
         return exit_status;
     }
 #endif
-	if(0!=(exit_status = micro_fileinfo_init())){
+    if(0!=(exit_status = micro_fileinfo_init())){
         return exit_status;
     }
     const int sfx_filesize = micro_get_sfx_filesize();
@@ -418,16 +414,16 @@ int main(int argc, char *argv[])
     dbgprintf("self is %s\n", self_filename_mb);
     char * translated_path;
     char * ini_entries = malloc(sizeof(HARDCODED_INI) + micro_ext_ini.size);
-	memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
-	size_t ini_entries_len = sizeof(HARDCODED_INI);
-	if (0 < micro_ext_ini.size){
-		memcpy(&ini_entries[ini_entries_len-2], micro_ext_ini.data, micro_ext_ini.size);
-		ini_entries_len += micro_ext_ini.size -2;
-		free(micro_ext_ini.data);
-		micro_ext_ini.data = NULL;
-	}
-	// remove ending 2 '\0's
-	ini_entries_len -= 2;
+    memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
+    size_t ini_entries_len = sizeof(HARDCODED_INI);
+    if (0 < micro_ext_ini.size){
+        memcpy(&ini_entries[ini_entries_len-2], micro_ext_ini.data, micro_ext_ini.size);
+        ini_entries_len += micro_ext_ini.size -2;
+        free(micro_ext_ini.data);
+        micro_ext_ini.data = NULL;
+    }
+    // remove ending 2 '\0's
+    ini_entries_len -= 2;
 
     sapi_module_struct *sapi_module = &micro_sapi_module;
     int module_started = 0, request_started = 0, sapi_started = 0;
@@ -435,46 +431,46 @@ int main(int argc, char *argv[])
 
 
 #if defined(PHP_WIN32) && !defined(PHP_MICRO_WIN32_NO_CONSOLE)
-	php_win32_console_fileno_set_vt100(STDOUT_FILENO, TRUE);
-	php_win32_console_fileno_set_vt100(STDERR_FILENO, TRUE);
+    php_win32_console_fileno_set_vt100(STDOUT_FILENO, TRUE);
+    php_win32_console_fileno_set_vt100(STDERR_FILENO, TRUE);
 #endif
 
-	micro_sapi_module.additional_functions = additional_functions;
+    micro_sapi_module.additional_functions = additional_functions;
 
 #if false && defined(PHP_WIN32) && defined(_DEBUG) && defined(PHP_WIN32_DEBUG_HEAP)
-	{
-		int tmp_flag;
-		_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-		_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
-		_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-		_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
-		_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-		_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
-		tmp_flag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-		tmp_flag |= _CRTDBG_DELAY_FREE_MEM_DF;
-		tmp_flag |= _CRTDBG_LEAK_CHECK_DF;
+    {
+        int tmp_flag;
+        _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+        _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+        _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+        tmp_flag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+        tmp_flag |= _CRTDBG_DELAY_FREE_MEM_DF;
+        tmp_flag |= _CRTDBG_LEAK_CHECK_DF;
 
-		_CrtSetDbgFlag(tmp_flag);
-	}
+        _CrtSetDbgFlag(tmp_flag);
+    }
 #endif
 
 #if defined(SIGPIPE) && defined(SIG_IGN)
-	signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
-								that sockets created via fsockopen()
-								don't kill PHP if the remote site
-								closes it.  in apache|apxs mode apache
-								does that for us!  thies@thieso.net
-								20000419 */
+    signal(SIGPIPE, SIG_IGN); /* ignore SIGPIPE in standalone mode so
+                                that sockets created via fsockopen()
+                                don't kill PHP if the remote site
+                                closes it.  in apache|apxs mode apache
+                                does that for us!  thies@thieso.net
+                                20000419 */
 #endif
 
 #ifdef ZTS
-	php_tsrm_startup();
+    php_tsrm_startup();
 # ifdef PHP_WIN32
-	ZEND_TSRMLS_CACHE_UPDATE();
+    ZEND_TSRMLS_CACHE_UPDATE();
 # endif
 #endif
 
-	zend_signal_startup();
+    zend_signal_startup();
 
 #ifdef PHP_WIN32
     int wapiret = 0;
@@ -483,16 +479,15 @@ int main(int argc, char *argv[])
     php_win32_ioutil_init();
     php_win32_init_gettimeofday();
 
-	_fmode = _O_BINARY;			/*sets default for file streams to binary */
-	setmode(_fileno(stdin), O_BINARY);		/* make the stdio mode be binary */
-	setmode(_fileno(stdout), O_BINARY);		/* make the stdio mode be binary */
-	setmode(_fileno(stderr), O_BINARY);		/* make the stdio mode be binary */
+    _fmode = _O_BINARY;            /*sets default for file streams to binary */
+    setmode(_fileno(stdin), O_BINARY);        /* make the stdio mode be binary */
+    setmode(_fileno(stdout), O_BINARY);        /* make the stdio mode be binary */
+    setmode(_fileno(stderr), O_BINARY);        /* make the stdio mode be binary */
 #endif
 
     // here we start execution
-
     dbgprintf("start try catch\n");
-    zend_try{
+    zend_first_try{
         sapi_module->ini_defaults = sapi_micro_ini_defaults;
         // this should not be settable
         // TODO: macro to configure or special things
@@ -510,7 +505,7 @@ int main(int argc, char *argv[])
 
         sapi_module->executable_location = argv[0];
 
-	    sapi_module->ini_entries = ini_entries;
+        sapi_module->ini_entries = ini_entries;
 
         /* startup after we get the above ini override se we get things right */
         dbgprintf("start minit\n");
@@ -530,8 +525,8 @@ int main(int argc, char *argv[])
             goto err;
         }
 
-		// no chdir as cli do
-		SG(options) |= SAPI_OPTION_NO_CHDIR;
+        // no chdir as cli do
+        SG(options) |= SAPI_OPTION_NO_CHDIR;
 
         zend_stream_init_fp(&file_handle, fp, self_filename_mb);
 
@@ -546,20 +541,20 @@ int main(int argc, char *argv[])
 
         dbgprintf("start rinit\n");
         if (php_request_startup()==FAILURE) {
-			fclose(file_handle.handle.fp);
-			dbgprintf("failed rinit\n");
-			goto err;
-		}
+            fclose(file_handle.handle.fp);
+            dbgprintf("failed rinit\n");
+            goto err;
+        }
         dbgprintf("done rinit\n");
         request_started = 1;
 
-		// add STD{OUT, IN, ERR} constants
-		micro_register_file_handles();
+        // add STD{OUT, IN, ERR} constants
+        micro_register_file_handles();
         CG(skip_shebang) = 1;
         /*zend_register_bool_constant(
-			ZEND_STRL("PHP_CLI_PROCESS_TITLE"),
-			is_ps_title_available() == PS_TITLE_SUCCESS,
-			CONST_CS, 0);*/
+            ZEND_STRL("PHP_CLI_PROCESS_TITLE"),
+            is_ps_title_available() == PS_TITLE_SUCCESS,
+            CONST_CS, 0);*/
         
         // ?
         zend_is_auto_global_str(ZEND_STRL("_SERVER"));
@@ -575,35 +570,35 @@ out:
     // frees here
     if (request_started) {
         dbgprintf("rshutdown\n");
-		php_request_shutdown((void *) 0);
-	}
-	if (translated_path) {
-		free(translated_path);
-	}
-	if (exit_status == 0) {
-		exit_status = EG(exit_status);
-	}
-	if (ini_entries) {
-		free(ini_entries);
-	}
-	if (module_started) {
+        php_request_shutdown((void *) 0);
+    }
+    if (translated_path) {
+        free(translated_path);
+    }
+    if (exit_status == 0) {
+        exit_status = EG(exit_status);
+    }
+    if (ini_entries) {
+        free(ini_entries);
+    }
+    if (module_started) {
         dbgprintf("mshutdown\n");
-		php_module_shutdown();
-	}
-	if (sapi_started) {
+        php_module_shutdown();
+    }
+    if (sapi_started) {
         dbgprintf("sapishutdown\n");
-		sapi_shutdown();
-	}
+        sapi_shutdown();
+    }
 #ifdef ZTS
     dbgprintf("tsrmshutdown\n");
-	tsrm_shutdown();
+    tsrm_shutdown();
 #endif
-	return exit_status;
+    return exit_status;
 err:
-	sapi_deactivate();
-	zend_ini_deactivate();
-	exit_status = 1;
-	goto out;
+    sapi_deactivate();
+    zend_ini_deactivate();
+    exit_status = 1;
+    goto out;
 
     return 0;
 }
