@@ -1,11 +1,11 @@
 <?php
-// fake a cli command
+// fake a cli command, for run tests.php
 $mainpath = NULL;
 $inisets = "";
 $orig_argv = $argv;
 $arg0 = array_shift($argv);
-//$errf = STDERR;
-$errf = fopen("/tmp/fakecmd.log", "ab+");
+$errf = STDERR;
+//$errf = fopen("/tmp/fakecmd.log", "ab+");
 function argvalue2($arg){
     global $argv;
     global $errf;
@@ -176,6 +176,7 @@ if(!$modeset){
     exit(1);
 }
 
+
 set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
     global $errf;
     $fullcmd = implode(" ", $orig_argv);
@@ -183,40 +184,65 @@ set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfi
     exit(1);
 });
 
-if(isset($mainpath)){
-    $outpath = $mainpath . ".exe";
-    $code = file_get_contents($mainpath);
-}else{
-    $outpath = "./temp.exe";
-    $code = $maincode;
+const BUFSIZE = 4096;
+function writesfx($out){
+    $sfx = fopen(micro_get_self_filename(), "rb");
+    // write sfx header
+    $size = micro_get_sfx_filesize();
+    for(; $size > 0; $size -= BUFSIZE){
+        fwrite($out, fread($sfx, $size > BUFSIZE ? BUFSIZE : $size));
+    }
+    fclose($sfx);
 }
 
-$out = fopen($outpath, "wb");
-$sfx = fopen(micro_get_self_filename(), "rb");
-
-// write sfx header
-$size = micro_get_sfx_filesize();
-$bufsize = 4096;
-for(; $size > 0; $size -= $bufsize){
-    fwrite($out, fread($sfx, $size > $bufsize ? $bufsize : $size));
-}
-fclose($sfx);
-
-// write ini if provided
-if(strlen($inisets)>0){
-    fwrite($out, "\xfd\xf6\x69\xe6");
-    fwrite($out, pack("N", strlen($inisets)));
-    fwrite($out, $inisets);
+function writeinis($out, $inisets){
+    if(strlen($inisets)>0){
+        fwrite($out, "\xfd\xf6\x69\xe6");
+        fwrite($out, pack("N", strlen($inisets)));
+        fwrite($out, $inisets);
+    }
 }
 
-// write code
-$wrote = fwrite($out, $code);
-fclose($out);
-
-chmod($outpath, 0755);
+function writecode($out, $path){
+    $in = fopen($path, "rb");
+    do{
+        $wrote = fwrite($out, fread($in, BUFSIZE));
+    }while(BUFSIZE === $wrote);
+    fclose($in);
+}
 
 $ret = NULL;
-passthru($outpath . " " . implode(" ", $argv), $ret);
+if(isset($mainpath)){
+    $outpath = $mainpath . ".exe";
+    $out = fopen($outpath, "wb");
+
+    writesfx($out);
+    writeinis($out, $inisets);
+    writecode($out, $mainpath);
+    fclose($out);
+    chmod($outpath, 0755);
+
+    // switch php and exe
+    rename($mainpath, $mainpath . ".orig");
+    rename($outpath, $mainpath);
+    passthru($mainpath . " " . implode(" ", $argv), $ret);
+    rename($mainpath . ".orig", $mainpath);
+}else{
+    $outpath = "./temp.exe";
+    $out = fopen($outpath, "wb");
+
+    writesfx($out);
+    writeinis($out, $inisets);
+    fwrite($out, "\x3c?php " .$maincode);
+    fclose($out);
+    chmod($outpath, 0755);
+
+    passthru($outpath . " " . implode(" ", $argv), $ret);
+}
+
+
 // remove temp executable
-unlink($outpath);
+if(is_file($outpath)){
+    unlink($outpath);
+}
 exit($ret);
