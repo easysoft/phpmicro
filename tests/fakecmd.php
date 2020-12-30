@@ -61,9 +61,16 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             $def = argvalue2($arg);
             $kv = explode("=", $def, 2);
             if(count($kv) > 1){
-                $inisets .= $kv[0] . '="' . $kv[1] . "\"\n";
+                if(
+                    strlen($kv[1]) > 0 && // *val != '\0'
+                    false === strpos("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890", $kv[1][0]) // !isalnum(*val) && *val != '"' && *val != '\''
+                ){
+                    $inisets .= $kv[0] . '="' . $kv[1] . "\"\n";
+                }else{
+                    $inisets .= $kv[0] . '=' . $kv[1] . "\n";
+                }
             }else{
-                $inisets .= $def . "\n";
+                $inisets .= $def . "=1\n";
             }
             goto gonext;
         case "-e":
