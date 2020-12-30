@@ -67,7 +67,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                 exit(1);
             }
             $modeset = true;
-            $mainpath= argvalue2($argv);
+            $mainpath= argvalue2($arg);
             goto gonext;
         case "-h":
             fprintf(STDOUT, "no help yet\n");
@@ -145,6 +145,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                     fprintf(STDERR, "--r{f, c, e, z, i} not implement yet\n");
                     exit(1);
                 case "--":
+                    $arg = array_shift($argv);
                 default:
                     // continue
             }
