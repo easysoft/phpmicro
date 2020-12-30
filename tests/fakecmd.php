@@ -4,6 +4,8 @@ $mainpath = NULL;
 $inisets = "";
 $orig_argv = $argv;
 $arg0 = array_shift($argv);
+$errf = STDERR;
+//$errf = fopen("/tmp/fakecmd.log", "ab");
 function argvalue2($arg){
     global $argv;
     if(strlen($arg) === 2){
@@ -12,7 +14,7 @@ function argvalue2($arg){
         $v = substr($arg, 2);
     }
     if(NULL === $v){
-        fprintf(STDERR, "failed parse arg\n");
+        fprintf($errf, "failed parse arg\n");
         exit(1);
     }
     return $v;
@@ -32,7 +34,7 @@ $modeset = false;
 for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     switch(substr($arg, 0, 2)){
         case "-a":
-            fprintf(STDERR, "not support for stdin codes yet\n");
+            fprintf($errf, "not support for stdin codes yet\n");
             exit(1);
         case "-c":
             $v = argvalue2($arg);
@@ -59,11 +61,11 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             }
             goto gonext;
         case "-e":
-            fprintf(STDERR, "not support for stdin codes yet\n");
+            fprintf($errf, "not support for stdin codes yet\n");
             exit(1);
         case "-f":
             if($modeset){
-                fprintf(STDERR, "mode differ\n");
+                fprintf($errf, "mode differ\n");
                 exit(1);
             }
             $modeset = true;
@@ -76,7 +78,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             phpinfo();
             exit(0);
         case "-l":
-            fprintf(STDERR, "no lint yet\n");
+            fprintf($errf, "no lint yet\n");
             exit(1);
         case "-m":
             $all = get_loaded_extensions();
@@ -94,7 +96,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             exit(0);
         case "-r":
             if($modeset){
-                fprintf(STDERR, "mode differ\n");
+                fprintf($errf, "mode differ\n");
                 exit(1);
             }
             $modeset = true;
@@ -104,17 +106,17 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
         case "-R":
         case "-F":
         case "-E":
-            fprintf(STDERR, "-{B, R, F, E} not implement yet\n");
+            fprintf($errf, "-{B, R, F, E} not implement yet\n");
             exit(1);
         case "-H":
-            fprintf(STDERR, "-H not implement yet\n");
+            fprintf($errf, "-H not implement yet\n");
             exit(1);
         case "-S":
         case "-t":
-            fprintf(STDERR, "-{S, t} not implement yet\n");
+            fprintf($errf, "-{S, t} not implement yet\n");
             exit(1);
         case "-s":
-            fprintf(STDERR, "-s not implement yet\n");
+            fprintf($errf, "-s not implement yet\n");
             exit(1);
         case "-v":
             echo "PHP " . PHP_VERSION . " (micro) (built: Jan 01 1970 00:00:00) ( NTS )\n" .
@@ -124,7 +126,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                 "\n";
             exit(0);
         case "-w":
-            fprintf(STDERR, "-w not implement yet\n");
+            fprintf($errf, "-w not implement yet\n");
             exit(1);
         case "-z":
             $v = argvalue2($arg);
@@ -142,7 +144,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                 case "--re":
                 case "--rz":
                 case "--ri":
-                    fprintf(STDERR, "--r{f, c, e, z, i} not implement yet\n");
+                    fprintf($errf, "--r{f, c, e, z, i} not implement yet\n");
                     exit(1);
                 case "--":
                     $arg = array_shift($argv);
@@ -163,13 +165,13 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     gonext:
 }
 if(!$modeset){
-    fprintf(STDERR, "run waht?\n");
+    fprintf($errf, "run waht?\n");
     exit(1);
 }
 
 set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
     $fullcmd = implode(" ", $orig_argv);
-    fprintf(STDERR, "$errstr \n at $errfile:$errline\n while processing cmd:\n $fullcmd\n");
+    fprintf($errf, "$errstr \n at $errfile:$errline\n while processing cmd:\n $fullcmd\n");
     exit(1);
 });
 
