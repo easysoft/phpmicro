@@ -1,9 +1,9 @@
 <?php
 // fake a cli command, for run tests.php
 $mainpath = NULL;
-$inisets = "";
 $orig_argv = $argv;
 $arg0 = array_shift($argv);
+$inisets = "micro.php_binary=$arg0\n";
 $errf = STDERR;
 //$errf = fopen("/tmp/fakecmd.log", "ab+");
 function argvalue2($arg){
