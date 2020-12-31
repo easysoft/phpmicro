@@ -54,5 +54,6 @@ limitations under the License.
 #endif
 
 #define PHP_MICRO_INIMARK ((uint8_t[4]) {0xfd, 0xf6, 0x69, 0xe6})
+#define PHP_MICRO_INIENTRY(x) ("micro." #x)
 
 #endif // _PHP_MICRO_H
