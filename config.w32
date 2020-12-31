@@ -5,9 +5,9 @@ ARG_ENABLE('micro', 'Build micro PHP sfx', 'yes');
 ARG_ENABLE('micro-win32', 'Build console-less micro PHP sfx', 'no');
 
 if (PHP_MICRO == "yes") {
-	SAPI('micro', 'php_micro.c php_micro_fileinfo.c php_micro_helper.c', 'php-micro.exe', '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+	SAPI('micro', 'php_micro.c php_micro_fileinfo.c php_micro_helper.c php_micro_hooks.c', 'php-micro.exe', '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
 	
-	ADD_FLAG('CFLAGS_MICRO_OBJ', '/TC');
+	ADD_FLAG('CFLAGS_MICRO_OBJ', '/TC /W3 /we4013 /wd4244 /wd4018');
 
 	ADD_FLAG("LIBS_MICRO", "ws2_32.lib");
 	ADD_FLAG("LIBS_MICRO", "shell32.lib");
@@ -37,7 +37,6 @@ if (PHP_MICRO == "yes") {
 	}
 
 	ADD_FLAG('CFLAGS', '/DPHP_MICRO_BUILD_SFX');
-	ADD_FLAG('CFLAGS_MICRO', '/we4013');
 
 	ADD_MAKEFILE_FRAGMENT();
 /*

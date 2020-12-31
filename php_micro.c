@@ -67,6 +67,7 @@ void php_win32_init_gettimeofday(void);
 #include "php_micro.h"
 #include "php_micro_fileinfo.h"
 #include "php_micro_helper.h"
+#include "php_micro_hooks.h"
 
 
 const char HARDCODED_INI[] =
@@ -310,40 +311,6 @@ static sapi_module_struct micro_sapi_module = {
     STANDARD_SAPI_MODULE_PROPERTIES
 };
 /* }}} */
-
-/*
-*	a little hacky to set ini_entries
-*/
-// original zend_post_startup_cb holder
-static int (* micro_zend_post_startup_cb_orig)(void) = NULL;
-/*
-*	micro_post_mstartup - post mstartup callback called as zend_post_startup_cb
-*	used to add ini_entries without additional_modules
-*/
-int micro_post_mstartup(void){
-	dbgprintf("start reg inientries\n");
-	const zend_ini_entry_def micro_ini_entries[] = {
-		ZEND_INI_ENTRY(PHP_MICRO_INIENTRY(php_binary), "", ZEND_INI_PERDIR|ZEND_INI_SYSTEM, NULL)
-	{0}};
-	int ret = zend_register_ini_entries(micro_ini_entries, 0);
-	if(SUCCESS != ret){
-		return ret;
-	}
-	if(NULL != micro_zend_post_startup_cb_orig){
-		return micro_zend_post_startup_cb_orig();
-	}
-	return ret;
-}
-/*
-*	micro_register_post_startup_cb - register post mstartup callback
-*/
-int micro_register_post_startup_cb(void){
-	if(NULL != zend_post_startup_cb){
-		micro_zend_post_startup_cb_orig = (void*)zend_post_startup_cb;
-	}
-	zend_post_startup_cb = (void*) micro_post_mstartup;
-	return SUCCESS;
-}
 
 /*
 *	sapi_micro_ini_defaults - set overwriteable ini defaults
@@ -600,8 +567,12 @@ int main(int argc, char *argv[])
 		}
 
 		module_started = 1;
-		
 
+		if (SUCCESS != micro_hook_zend_stream_ops()){
+			// if hook failed, go error
+			goto out;
+		}
+		
         FILE * fp = VCWD_FOPEN(self_filename_mb, "rb");
         zend_fseek(fp, sfx_filesize, SEEK_SET);
 
