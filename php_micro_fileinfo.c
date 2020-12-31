@@ -78,7 +78,7 @@ const wchar_t* micro_get_filename_w();
 
 int micro_fileinfo_init(){
     int ret = 0;
-    size_t len = 0;
+    uint32_t len = 0;
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
 #ifdef PHP_WIN32
     LPCWSTR self_path = micro_get_filename_w();
