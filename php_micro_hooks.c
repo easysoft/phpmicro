@@ -70,7 +70,7 @@ typedef struct _micro_stream_with_offset_t {
 *	micro_zend_stream_reader - zend_stream reader proxy
 *	 return size with offset
 */
-static SSIZE_T micro_zend_stream_reader(void* handle, char* buf, size_t len){
+static ssize_t micro_zend_stream_reader(void* handle, char* buf, size_t len){
     micro_stream_with_offset_t *swo = handle;
     return swo->reader_orig(swo->stream_orig, buf, len);
 }
