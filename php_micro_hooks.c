@@ -145,7 +145,7 @@ int micro_php_stream_seek_with_offset(php_stream *stream, zend_off_t offset, int
     zend_off_t dummy;
 
     if(SEEK_SET == whence){
-        ret = php_stream_stdio_ops.seek(stream, offset - micro_get_sfx_filesize(), whence, &dummy);
+        ret = php_stream_stdio_ops.seek(stream, offset + micro_get_sfx_filesize(), whence, &dummy);
     }else{
         ret = php_stream_stdio_ops.seek(stream, offset, whence, &dummy);
     }
@@ -173,20 +173,21 @@ int micro_stream_open_function(const char *filename, zend_file_handle *handle){
 	if(SUCCESS != micro_zend_stream_open_function_orig(filename, handle)){
 		return FAILURE;
 	}
+    dbgprintf("compare\n (filename)%s\n (selfname)%s\n", filename, micro_get_filename());
 	if(0 == strcmp(filename, micro_get_filename())){
         if(ZEND_HANDLE_STREAM == handle->type){
             // it's a php stream
-            dbgprintf("hooking zend_stream type php_stream with offset");
+            dbgprintf("hooking zend_stream type php_stream with offset\n");
             // seek it to begin of payload first
             php_stream * ps = (handle->handle).stream.handle;
             if(NULL == php_stream_stdio_ops_with_offset){
-                malloc(sizeof(*php_stream_stdio_ops_with_offset));
+                php_stream_stdio_ops_with_offset = malloc(sizeof(*php_stream_stdio_ops_with_offset));
                 memcpy(php_stream_stdio_ops_with_offset, &php_stream_stdio_ops, sizeof(php_stream_stdio_ops));
                 php_stream_stdio_ops_with_offset->seek = micro_php_stream_seek_with_offset;
             }
             // assign ps->ops with offsetted ops
             ps->ops = php_stream_stdio_ops_with_offset;
-            dbgprintf("initial seeking");
+            dbgprintf("initial seeking\n");
             zend_off_t dummy;
             ps->ops->seek(ps, 0, SEEK_SET, &dummy);
             // convert it to micro_stream_with_offset_t
@@ -206,7 +207,7 @@ int micro_stream_open_function(const char *filename, zend_file_handle *handle){
             };
         }else if(ZEND_HANDLE_FP == handle->type){
             // it's a fp
-            dbgprintf("hooking zend_stream with offset");
+            dbgprintf("hooking zend_stream with offset\n");
             // seek it to begin of payload first
             FILE * fp = (handle->handle).stream.handle;
             fseek(fp, micro_get_sfx_filesize(), SEEK_SET);
@@ -240,5 +241,6 @@ int micro_hook_zend_stream_ops(void){
 		return FAILURE;
 	}
 	micro_zend_stream_open_function_orig = zend_stream_open_function;
+    zend_stream_open_function = micro_stream_open_function;
 	return SUCCESS;
 }
