@@ -132,8 +132,25 @@ static void sapi_micro_register_variables(zval *track_vars_array) /* {{{ */
     }
 }
 
+int micro_register_post_startup_cb(void);
 static int php_micro_startup(sapi_module_struct *sapi_module) /* {{{ */
 {
+	/*
+	zend_module_entry fake_module_entry = {
+		STANDARD_MODULE_HEADER,
+		"micro",
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		PHP_VERSION,
+		STANDARD_MODULE_PROPERTIES
+	};
+	*/
+	micro_register_post_startup_cb();
+
     if (php_module_startup(sapi_module, NULL, 0)==FAILURE) {
         return FAILURE;
     }
@@ -294,20 +311,61 @@ static sapi_module_struct micro_sapi_module = {
 };
 /* }}} */
 
-/* {{{ sapi_micro_ini_defaults */
+/*
+*	a little hacky to set ini_entries
+*/
+// original zend_post_startup_cb holder
+static int (* micro_zend_post_startup_cb_orig)(void) = NULL;
+/*
+*	micro_post_mstartup - post mstartup callback called as zend_post_startup_cb
+*	used to add ini_entries without additional_modules
+*/
+int micro_post_mstartup(void){
+	dbgprintf("start reg inientries\n");
+	const zend_ini_entry_def micro_ini_entries[] = {
+		ZEND_INI_ENTRY(PHP_MICRO_INIENTRY(php_binary), "", ZEND_INI_PERDIR|ZEND_INI_SYSTEM, NULL)
+	{0}};
+	int ret = zend_register_ini_entries(micro_ini_entries, 0);
+	if(SUCCESS != ret){
+		return ret;
+	}
+	if(NULL != micro_zend_post_startup_cb_orig){
+		return micro_zend_post_startup_cb_orig();
+	}
+	return ret;
+}
+/*
+*	micro_register_post_startup_cb - register post mstartup callback
+*/
+int micro_register_post_startup_cb(void){
+	if(NULL != zend_post_startup_cb){
+		micro_zend_post_startup_cb_orig = (void*)zend_post_startup_cb;
+	}
+	zend_post_startup_cb = (void*) micro_post_mstartup;
+	return SUCCESS;
+}
 
-/* overwriteable ini defaults must be set in sapi_micro_ini_defaults() */
-#define INI_DEFAULT(name,value)\
-    ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value)-1, 1));\
-    zend_hash_str_update(configuration_hash, name, sizeof(name)-1, &tmp);\
-
+/*
+*	sapi_micro_ini_defaults - set overwriteable ini defaults
+*/
 static void sapi_micro_ini_defaults(HashTable *configuration_hash)
 {
     zval tmp;
+/* overwriteable ini defaults must be set in sapi_micro_ini_defaults() */
+#define INI_DEFAULT(name,value)\
+    ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value)-1, 1));\
+    zend_hash_str_update(configuration_hash, name, sizeof(name)-1, &tmp);
     INI_DEFAULT("report_zend_debug", "0");
     INI_DEFAULT("display_errors", "1");
+#undef INI_DEFAULT
+
+
+	// omit PG(php_binary) before any php_ini codes used it
+	if(NULL != PG(php_binary)){
+		free(PG(php_binary));
+		PG(php_binary) = NULL;
+	}
 }
-/* }}} */
 
 #ifdef _DEBUG
 
@@ -321,6 +379,7 @@ ZEND_END_ARG_INFO()
 #ifdef PHP_WIN32
 ZEND_BEGIN_ARG_INFO(arginfo_micro_enum_modules, 0)
 ZEND_END_ARG_INFO()
+
 #endif // PHP_WIN32
 
 #endif
@@ -412,6 +471,7 @@ int main(int argc, char *argv[])
     const char * self_filename_mb = micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
     char * translated_path;
+	// prepare our ini entries with stub
     char * ini_entries = malloc(sizeof(HARDCODED_INI) + micro_ext_ini.size);
     memcpy(ini_entries, HARDCODED_INI, sizeof(HARDCODED_INI));
     size_t ini_entries_len = sizeof(HARDCODED_INI);
@@ -426,8 +486,6 @@ int main(int argc, char *argv[])
 
     sapi_module_struct *sapi_module = &micro_sapi_module;
     int module_started = 0, request_started = 0, sapi_started = 0;
-
-
 
 #if defined(PHP_WIN32) && !defined(PHP_MICRO_WIN32_NO_CONSOLE)
     php_win32_console_fileno_set_vt100(STDOUT_FILENO, TRUE);
@@ -498,12 +556,7 @@ int main(int argc, char *argv[])
         sapi_startup(sapi_module);
         sapi_started = 1;
 
-        // TODO: macro to configure
-        //sapi_module->php_ini_ignore = ini_ignore;
-        //sapi_module->ini_entries = ini_entries;
-
         sapi_module->executable_location = argv[0];
-
         sapi_module->ini_entries = ini_entries;
 
         /* startup after we get the above ini override se we get things right */
@@ -513,7 +566,41 @@ int main(int argc, char *argv[])
             exit_status = 1;
             goto out;
         }
-        module_started = 1;
+
+		// omit PHP_BINARY constant
+		// or let PHP_BINARY constant <- micro.php_binary if setted in ini
+		if(SUCCESS == zend_hash_str_del(EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY")-1)){
+			dbgprintf("remake pb constant\n");
+			zend_ini_entry * pbentry = NULL;
+			pbentry = zend_hash_str_find_ptr(
+				EG(ini_directives),
+				"ffi.enable",
+				sizeof("ffi.enable") -1
+			);
+			dbgprintf("fu ffi.enable=%s\n", ZSTR_VAL(pbentry->value));
+			if(
+				NULL != (pbentry = zend_hash_str_find_ptr(
+					EG(ini_directives),
+					PHP_MICRO_INIENTRY(php_binary),
+					sizeof(PHP_MICRO_INIENTRY(php_binary)) -1
+				))
+			){
+				dbgprintf("to %s\n", ZSTR_VAL(pbentry->value));
+				REGISTER_MAIN_STRINGL_CONSTANT("PHP_BINARY",
+					ZSTR_VAL(pbentry->value), ZSTR_LEN(pbentry->value),
+					CONST_PERSISTENT | CONST_CS | CONST_NO_FILE_CACHE
+				);
+			}else{
+				dbgprintf("removed\n");
+				REGISTER_MAIN_STRINGL_CONSTANT("PHP_BINARY",
+					"", 0,
+					CONST_PERSISTENT | CONST_CS | CONST_NO_FILE_CACHE)
+				;
+			}
+		}
+
+		module_started = 1;
+		
 
         FILE * fp = VCWD_FOPEN(self_filename_mb, "rb");
         zend_fseek(fp, sfx_filesize, SEEK_SET);
