@@ -75,11 +75,14 @@ struct _ext_ini {
 const wchar_t* micro_get_filename_w();
 #endif // PHP_WIN32
 
+const char* micro_get_filename_slashed_imp(void);
+const char * (*micro_get_filename_slashed)(void);
 
 int micro_fileinfo_init(){
     int ret = 0;
     uint32_t len = 0;
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
+    micro_get_filename_slashed = micro_get_filename_slashed_imp;
 #ifdef PHP_WIN32
     LPCWSTR self_path = micro_get_filename_w();
     HANDLE handle = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
@@ -149,7 +152,7 @@ int micro_fileinfo_init(){
         (ext_ini_header.len[1] << 16) +
         (ext_ini_header.len[2] << 8) +
         ext_ini_header.len[3];
-    dbgprintf("len is %zd\n", len);
+    dbgprintf("len is %d\n", len);
     if(filesize <= sfx_filesize + sizeof(ext_ini_header) + len){
         // bad len, not an extra ini
         ret = SUCCESS;
@@ -277,6 +280,15 @@ const wchar_t* micro_get_filename_w(){
 const char * micro_get_filename(){
     return php_win32_cp_w_to_utf8(micro_get_filename_w());
 }
+
+const char* micro_get_filename_slashed_imp(){
+    static const char* _filename_slashed = NULL;
+    if(NULL == _filename_slashed){
+        _filename_slashed = micro_slashize(micro_get_filename());
+    }
+    return _filename_slashed;
+}
+
 #elif defined(__linux)
 const char * micro_get_filename(){
     static char* self_filename = NULL;
@@ -313,6 +325,15 @@ const char * micro_get_filename(){
 #error "not support this system yet"
 #endif
 
+size_t micro_get_filename_len(void){
+    static size_t _micro_filename_l = -1;
+    if(-1 == _micro_filename_l){
+        _micro_filename_l = strlen(micro_get_filename());
+    }
+    return _micro_filename_l;
+}
+
+/*
 int is_stream_self(php_stream * stream){
 	dbgprintf("checking %s\n", stream->orig_path);
 #ifdef PHP_WIN32
@@ -336,6 +357,7 @@ int is_stream_self(php_stream * stream){
 	dbgprintf("not self\n");
 	return 0;
 }
+*/
 
 
 PHP_FUNCTION(micro_get_self_filename){

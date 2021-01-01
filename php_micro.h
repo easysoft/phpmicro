@@ -56,4 +56,16 @@ limitations under the License.
 #define PHP_MICRO_INIMARK ((uint8_t[4]) {0xfd, 0xf6, 0x69, 0xe6})
 #define PHP_MICRO_INIENTRY(x) ("micro." #x)
 
+static inline const char *micro_slashize(const char *x){
+    size_t size = strlen(x) + 1;
+    char * ret = malloc(size);
+    memcpy(ret, x, size);
+    for(size_t i = 0; i<size - 1; i++){
+        if('\\' == ret[i]){
+            ret[i] = '/';
+        }
+    }
+    return ret;
+}
+
 #endif // _PHP_MICRO_H

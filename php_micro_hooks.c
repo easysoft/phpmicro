@@ -21,6 +21,8 @@ limitations under the License.
 #include "php_micro.h"
 #include "php_micro_fileinfo.h"
 
+/* ======== things for ini set ======== */
+
 // original zend_post_startup_cb holder
 static int (* micro_zend_post_startup_cb_orig)(void) = NULL;
 /*
@@ -52,195 +54,392 @@ int micro_register_post_startup_cb(void){
 	return SUCCESS;
 }
 
-// original zend_stream_open_function holder
-#if PHP_MAJOR_VERSION > 7
-zend_result (*micro_zend_stream_open_function_orig)(const char *, zend_file_handle *) = NULL;
-#else
-int (*micro_zend_stream_open_function_orig)(const char *, zend_file_handle *) = NULL;
-#endif
+/* ======== things for hooking php_stream ======== */
+// my own ops struct
+typedef struct _micro_php_stream_ops {
+    php_stream_ops ops;
+    const php_stream_ops * ops_orig;
+} micro_php_stream_ops;
 
-typedef struct _micro_stream_with_offset_t {
-    php_stream *stream_orig;
-    zend_stream_reader_t   reader_orig;
-	zend_stream_fsizer_t   fsizer_orig;
-	zend_stream_closer_t   closer_orig;
-} micro_stream_with_offset_t;
+// use original ops as ps->ops
+#define orig_ops(myops, ps) \
+    const php_stream_ops * myops = ps->ops; \
+    ps->ops = ((const micro_php_stream_ops*)(ps->ops))->ops_orig;
+// use with-offset ops as ps->ops
+#define ours_ops(ps) \
+    ps->ops = myops;
+#define ret_orig(rtyp, name, stream, ...) do{\
+    orig_ops(myops, stream);\
+    rtyp ret = stream->ops->name(stream, __VA_ARGS__);\
+    ours_ops(stream);\
+    return ret;\
+} while (0)
 
-/*
-*	micro_zend_stream_reader - zend_stream reader proxy
-*	 return size with offset
+/* ops proxies here
+*   why there're many proxies:
+*   php DO NOT have a explcit standard applied which
+*       limits one php_stream op function (like ops->stat) MUST NOT call another one,
+*       or limits one php_stream op function MUST NOT use its own modified php_stream_obs (like what i do).
+*   so we use these proxies to call original operation functions
 */
-static ssize_t micro_zend_stream_reader(void* handle, char* buf, size_t len){
-    micro_stream_with_offset_t *swo = handle;
-    return swo->reader_orig(swo->stream_orig, buf, len);
+/* stdio like functions - these are mandatory! */
+static ssize_t micro_php_stream_write(php_stream *stream, const char *buf, size_t count){
+    ret_orig(ssize_t, write, stream, buf, count);
 }
+static ssize_t micro_php_stream_read(php_stream *stream, char *buf, size_t count){
+    ret_orig(ssize_t, read, stream, buf, count);
+}
+static int micro_php_stream_flush(php_stream *stream){
+    ret_orig(int, flush, stream);
+}
+/* these are optional */
+static int micro_php_stream_cast(php_stream *stream, int castas, void **_ret){
+    ret_orig(int, cast, stream, castas, _ret);
+}
+static int micro_php_stream_stat(php_stream *stream, php_stream_statbuf *ssb){
+    ret_orig(int, stat, stream, ssb);
+}
+#undef ret_orig
+/* end of ops proxies */
+
+/* stream ops hookers */
 /*
-*	micro_zend_stream_fsizer_with_offset - zend_stream fsizer with offset
-*	 return size with offset
+*	micro_php_stream_set_option - php_stream sef_option op with offset
+*	 to fix mmap-like behaiver
 */
-static size_t micro_zend_stream_fsizer_with_offset(void* handle){
-    micro_stream_with_offset_t *swo = handle;
-    size_t ret = swo->fsizer_orig(swo->stream_orig) - micro_get_sfx_filesize();
-    if (0 > ret){
-        // strange size
-        return 0;
+static int micro_php_stream_set_option(php_stream *stream, int option, int value, void *ptrparam){
+    void* myptrparam = ptrparam;
+
+    if(option == PHP_STREAM_OPTION_MMAP_API && value == PHP_STREAM_MMAP_MAP_RANGE){
+        dbgprintf("trying mmap, let us mask it!\n");
+        php_stream_mmap_range * range = myptrparam;
+        if(
+            PHP_STREAM_MAP_MODE_READWRITE == range->mode ||
+            PHP_STREAM_MAP_MODE_SHARED_READWRITE == range->mode
+        ){
+            // self should not be writeable
+            return PHP_STREAM_OPTION_RETURN_ERR;
+        }
+        range->offset = range->offset + micro_get_sfx_filesize();
     }
+    orig_ops(myops, stream);
+    int ret = stream->ops->set_option(stream, option, value, myptrparam);
+    ours_ops(stream);
     return ret;
 }
-/*
-*	micro_zend_stream_closer - zend_stream closer proxy
-*	 return size with offset
-*/
-static void micro_zend_stream_closer(void* handle){
-    micro_stream_with_offset_t *swo = handle;
-    swo->closer_orig(swo->stream_orig);
-}
-
-typedef struct _micro_stream_fp_with_offset_t {
-    FILE *fp_orig;
-    zend_stream_reader_t   reader_orig;
-	zend_stream_fsizer_t   fsizer_orig;
-	zend_stream_closer_t   closer_orig;
-} micro_stream_fp_with_offset_t;
-
-/*
-*	micro_zend_stream_fp_reader - zend_stream fp reader proxy
-*	 return size with offset
-*/
-static ssize_t micro_zend_stream_fp_reader(void* handle, char* buf, size_t len){
-    micro_stream_fp_with_offset_t *sfwo = handle;
-    return sfwo->reader_orig(sfwo->fp_orig, buf, len);
-}
-/*
-*	micro_zend_stream_fsizer_fp_with_offset - zend_stream fsizer with offset for fp type
-*	 return size with offset
-*/
-static size_t micro_zend_stream_fp_fsizer_with_offset(void* handle){
-    micro_stream_fp_with_offset_t *sfwo = handle;
-    size_t ret = sfwo->fsizer_orig(sfwo->fp_orig) - micro_get_sfx_filesize();
-    if (0 > ret){
-        // strange size
-        return 0;
-    }
-    return ret;
-}
-/*
-*	micro_zend_stream_fp_closer - zend_stream fp closer proxy
-*	 return size with offset
-*/
-static void micro_zend_stream_fp_closer(void* handle){
-    micro_stream_fp_with_offset_t *sfwo = handle;
-    sfwo->closer_orig(sfwo->fp_orig);
-}
-
 /*
 *	micro_php_stream_seek_with_offset - php_stream seek op with offset
-*	 return size with offset
+*	 return -1 for failed or 0 for success (behaives like fseek)
 */
 int micro_php_stream_seek_with_offset(php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset){
-    // micro will only be executed as common file (or phar)
-    // so ops->seek will be php_stdiop_seek
-    dbgprintf("seeking %zd with offset %d\n", offset, micro_get_sfx_filesize());
+    dbgprintf("seeking %zd with offset %d whence %d\n", offset, micro_get_sfx_filesize(), whence);
     int ret = -1;
-    zend_off_t dummy;
+    zend_off_t realoffset;
 
+    orig_ops(myops, stream);
     if(SEEK_SET == whence){
-        ret = php_stream_stdio_ops.seek(stream, offset + micro_get_sfx_filesize(), whence, &dummy);
+        ret = stream->ops->seek(stream, offset + micro_get_sfx_filesize(), whence, &realoffset);
     }else{
-        ret = php_stream_stdio_ops.seek(stream, offset, whence, &dummy);
+        ret = stream->ops->seek(stream, offset, whence, &realoffset);
     }
-    if(dummy < micro_get_sfx_filesize()){
+    ours_ops(stream);
+    if(-1 == ret){
+        return -1;
+    }
+    if(realoffset < micro_get_sfx_filesize()){
         php_error_docref(NULL, E_WARNING, "Seek on self stream failed");
 		return -1;
     }
-    if(0 == ret || -1 == ret){
-        return ret;
-    }
-    *newoffset = dummy - micro_get_sfx_filesize();
-    return ret - micro_get_sfx_filesize();
+    *newoffset = realoffset - micro_get_sfx_filesize();
+    return ret;
 }
 
-static php_stream_ops *php_stream_stdio_ops_with_offset = NULL; //todo: free
 /*
-*	micro_stream_open_function - zend_stream_open_function hooker
-*	 used to mask binary headers of self
+*	micro_php_stream_stat_with_offset - php_stream stat op with offset
 */
-int micro_stream_open_function(const char *filename, zend_file_handle *handle){
-	if(NULL == micro_zend_stream_open_function_orig){
-		// this should never happend
-		abort();
-	}
-	if(SUCCESS != micro_zend_stream_open_function_orig(filename, handle)){
-		return FAILURE;
-	}
-    dbgprintf("compare\n (filename)%s\n (selfname)%s\n", filename, micro_get_filename());
-	if(0 == strcmp(filename, micro_get_filename())){
-        if(ZEND_HANDLE_STREAM == handle->type){
-            // it's a php stream
-            dbgprintf("hooking zend_stream type php_stream with offset\n");
-            // seek it to begin of payload first
-            php_stream * ps = (handle->handle).stream.handle;
-            if(NULL == php_stream_stdio_ops_with_offset){
-                php_stream_stdio_ops_with_offset = malloc(sizeof(*php_stream_stdio_ops_with_offset));
-                memcpy(php_stream_stdio_ops_with_offset, &php_stream_stdio_ops, sizeof(php_stream_stdio_ops));
-                php_stream_stdio_ops_with_offset->seek = micro_php_stream_seek_with_offset;
-            }
-            // assign ps->ops with offsetted ops
-            ps->ops = php_stream_stdio_ops_with_offset;
-            dbgprintf("initial seeking\n");
-            zend_off_t dummy;
-            ps->ops->seek(ps, 0, SEEK_SET, &dummy);
-            // convert it to micro_stream_with_offset_t
-            micro_stream_with_offset_t * ostream = malloc(sizeof(*ostream));
-            *ostream = (micro_stream_with_offset_t){
-                .reader_orig = handle->handle.stream.reader,
-                .fsizer_orig = handle->handle.stream.fsizer,
-                .closer_orig = handle->handle.stream.closer,
-                .stream_orig = ps,
-            };
-            (handle->handle).stream = (zend_stream){
-                .handle = ostream,
-                .isatty = (handle->handle).stream.isatty,
-                .reader = micro_zend_stream_reader,
-                .fsizer = micro_zend_stream_fsizer_with_offset,
-                .closer = micro_zend_stream_closer,
-            };
-        }else if(ZEND_HANDLE_FP == handle->type){
-            // it's a fp
-            dbgprintf("hooking zend_stream with offset\n");
-            // seek it to begin of payload first
-            FILE * fp = (handle->handle).stream.handle;
-            fseek(fp, micro_get_sfx_filesize(), SEEK_SET);
-            // convert it to micro_stream_fp_with_offset_t
-            micro_stream_fp_with_offset_t * ostream = malloc(sizeof(*ostream));
-            *ostream = (micro_stream_fp_with_offset_t){
-                .reader_orig = handle->handle.stream.reader,
-                .fsizer_orig = handle->handle.stream.fsizer,
-                .closer_orig = handle->handle.stream.closer,
-                .fp_orig = fp,
-            };
-            (handle->handle).stream = (zend_stream){
-                .handle = ostream,
-                .isatty = (handle->handle).stream.isatty,
-                .reader = micro_zend_stream_fp_reader,
-                .fsizer = micro_zend_stream_fp_fsizer_with_offset,
-                .closer = micro_zend_stream_fp_closer,
-            };
+int micro_php_stream_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb){
+    int ret = -1;
+
+    orig_ops(myops, stream);
+    ret = stream->ops->stat(stream, ssb);
+    ours_ops(stream);
+    if(-1 == ret){
+        return -1;
+    }
+    dbgprintf("stating withoffset %zd -> %zd\n", ssb->sb.st_size, ssb->sb.st_size-micro_get_sfx_filesize());
+    ssb->sb.st_size -= micro_get_sfx_filesize();
+    return ret;
+}
+
+/*
+*	micro_php_stream_close_with_offset - php_stream close destroyer
+*/
+static int micro_php_stream_close_with_offset(php_stream *stream, int close_handle){
+    dbgprintf("closing with-offset file %p\n", stream);
+
+    orig_ops(myops, stream);
+    pefree((void*)myops, stream->is_persistent);
+    //free(myops);
+    int ret = stream->ops->close(stream, close_handle);
+    return ret;
+}
+
+#undef orig_ops
+#undef ours_ops
+/* end of stream ops hookers */
+
+/*
+*   micro_modify_ops_with_offset - modify a with-offset ops struct, the argument ps must be created
+*/
+static inline const int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
+    dbgprintf("compare %p, %p\n", ps->ops->close, micro_php_stream_close_with_offset);
+    if (
+        ps->ops->close == micro_php_stream_close_with_offset
+    ){
+        dbgprintf("offset alread set, skip it\n");
+        return FAILURE;
+    }
+    micro_php_stream_ops *ret = pemalloc(sizeof(*ret), ps->is_persistent);
+    //micro_php_stream_ops *ret = malloc(sizeof(*ret));
+    (*ret).ops = (php_stream_ops){
+        // set with-offset op handlers
+        .close = micro_php_stream_close_with_offset,
+        .seek = NULL == ps->ops->seek ? NULL : micro_php_stream_seek_with_offset,
+        .stat = NULL == ps->ops->stat ? NULL : 
+            (0 == mod_stat ? micro_php_stream_stat : micro_php_stream_stat_with_offset),
+        // set proxies
+        .write = micro_php_stream_write,
+        .read = micro_php_stream_read,
+        .flush = micro_php_stream_flush,
+        .cast = NULL == ps->ops->cast ? NULL : micro_php_stream_cast,
+        .set_option = NULL == ps->ops->set_option ? NULL : micro_php_stream_set_option,
+        // set original label
+        .label = ps->ops->label,
+    };
+    ret->ops_orig = ps->ops;
+    dbgprintf("assigning psop %p\n", ret);
+    ps->ops = (const php_stream_ops*)ret;
+    return SUCCESS;
+}
+
+// holder for original php_plain_files_wrapper_ops
+const php_stream_wrapper_ops* micro_plain_files_wops_orig = NULL;
+static inline int initial_seek(php_stream * ps);
+/*
+*   micro_php_stream_opener - php_stream_opener that modify ops according to filename
+*   replaces php_plain_files_stream_opener
+*   should be called after micro_fileinfo_init
+*/
+php_stream *micro_php_stream_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
+			int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
+    dbgprintf("opening file %s like plain file\n", filename);
+    if(NULL == micro_plain_files_wops_orig){
+        // this should never happen
+        abort();
+    }
+    php_stream * ps = micro_plain_files_wops_orig->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
+    const char* filename_slashed = micro_slashize(filename);
+    if(
+        NULL != ps &&
+        0 == strcmp(filename_slashed, micro_get_filename_slashed())
+    ){  
+        dbgprintf("opening self via php_stream, hook it\n");
+        if(SUCCESS == micro_modify_ops_with_offset(ps, 1)){
+            initial_seek(ps);
         }
     }
+    dbgprintf("done opening plain file %p\n", ps);
+    return ps;
+}
+
+// with-offset wrapper ops to replace php_plain_files_wrapper.wops
+static php_stream_wrapper_ops micro_plain_files_wops_with_offset ;
+
+/*
+*	micro_hook_plain_files_wops - hook plain file wrapper php_plain_files_wrapper
+*/
+int micro_hook_plain_files_wops(void){
+    micro_plain_files_wops_orig = php_plain_files_wrapper.wops;
+    memcpy(&micro_plain_files_wops_with_offset, micro_plain_files_wops_orig, sizeof(*micro_plain_files_wops_orig));
+    micro_plain_files_wops_with_offset.stream_opener = micro_php_stream_opener;
+    //micro_plain_files_wops_with_offset.stream_opener = micro_php_stream_closer;
+    php_plain_files_wrapper.wops = &micro_plain_files_wops_with_offset;
+    return SUCCESS;
+}
+
+/* ======== things for hooking url_stream ======== */
+
+// same as php_stream_wrapper
+typedef struct _micro_stream_wrapper_data {
+    const php_stream_wrapper_ops *pwops;
+    struct _micro_stream_wrapper_data *data;
+    int is_url;
+    php_stream_wrapper_ops wops;
+    php_stream_wrapper* wrapper_orig;
+} micro_stream_wrapper_data;
+const php_stream_wrapper_ops micro_wops;
+#define orig_wrapper(wrapper) (((micro_stream_wrapper_data *)(wrapper->abstract))->wrapper_orig)
+#define ret_orig(rett, name, wrapper, ...) do {\
+    rett ret = orig_wrapper(wrapper)->wops->name(orig_wrapper(wrapper), __VA_ARGS__);\
+    wrapper->is_url = orig_wrapper(wrapper)->is_url; \
+    return ret;\
+} while(0)
+
+/* wrapper ops proxies here */
+static int micro_wrapper_stream_closer(php_stream_wrapper *wrapper, php_stream *stream){
+    ret_orig(int, stream_closer, wrapper, stream);
+}
+static int micro_wrapper_stream_stat(php_stream_wrapper *wrapper, php_stream *stream, php_stream_statbuf *ssb){
+    ret_orig(int, stream_stat, wrapper, stream, ssb);
+}
+static int micro_wrapper_url_stat(php_stream_wrapper *wrapper, const char *url, int flags, php_stream_statbuf *ssb, php_stream_context *context){
+    ret_orig(int, url_stat, wrapper, url, flags, ssb, context);
+}
+static php_stream *micro_wrapper_dir_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
+        int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
+    ret_orig(php_stream *, dir_opener, wrapper, filename, mode, options, opened_path, context STREAMS_CC);
+}
+static int micro_wrapper_unlink(php_stream_wrapper *wrapper, const char *url, int options, php_stream_context *context){
+    ret_orig(int, unlink, wrapper, url, options, context);
+}
+static int micro_wrapper_rename(php_stream_wrapper *wrapper, const char *url_from, const char *url_to, int options, php_stream_context *context){
+    ret_orig(int, rename, wrapper, url_from, url_to, options, context);
+}
+static int micro_wrapper_stream_mkdir(php_stream_wrapper *wrapper, const char *url, int mode, int options, php_stream_context *context){
+    ret_orig(int, stream_mkdir, wrapper, url, mode, options, context);
+}
+static int micro_wrapper_stream_rmdir(php_stream_wrapper *wrapper, const char *url, int options, php_stream_context *context){
+    ret_orig(int, stream_rmdir, wrapper, url, options, context);
+}
+static int micro_wrapper_stream_metadata(php_stream_wrapper *wrapper, const char *url, int options, void *value, php_stream_context *context){
+    ret_orig(int, stream_metadata, wrapper, url, options, value, context);
+}
+/* end of wrapper ops proxies */
+
+static inline int initial_seek(php_stream * ps);
+/*
+*   micro_wrapper_stream_opener - modify ops according to filename
+*   replaces someproto_wrapper_open_url
+*   should be called after micro_fileinfo_init
+*/
+static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
+			int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
+    dbgprintf("opening file %s like url\n", filename);
+
+    php_stream * ps = orig_wrapper(wrapper)->wops->stream_opener(orig_wrapper(wrapper), filename, mode, options, opened_path, context STREAMS_REL_CC);
+    wrapper->is_url = orig_wrapper(wrapper)->is_url;
+    const char* filename_slashed = micro_slashize(filename);
+    if(
+        NULL != ps &&
+        strstr(filename, "://") &&
+        0 == strncmp(strstr(filename_slashed, "://") + 3, micro_get_filename_slashed(), micro_get_filename_len())
+    ){
+        dbgprintf("stream %s is in self\n", filename);
+        if(SUCCESS == micro_modify_ops_with_offset(ps, 0)){
+            initial_seek(ps);
+        }
+    }
+    free((void*)filename_slashed);
+    dbgprintf("done opening scheme file %p\n", ps);
+    return ps;
+}
+
+HashTable reregistered_protos = {0};
+int reregistered_protos_inited = 0;
+/*
+*	micro_reregister_proto - hook some:// protocol
+*   should be called after mstartup, before start execution
+*/
+int micro_reregister_proto(const char* proto){
+    if(0 == reregistered_protos_inited){
+        zend_hash_init(&reregistered_protos, 0, NULL, ZVAL_PTR_DTOR, 1);
+        reregistered_protos_inited = 1;
+    }
+    int ret = SUCCESS;
+    HashTable * ht = php_stream_get_url_stream_wrappers_hash_global();
+	const php_stream_wrapper * wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
+    if(NULL == wrapper){
+        // no some:// found
+        return SUCCESS;
+    }
+    if(SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))){
+        dbgprintf("failed unregister proto %s\n", proto);
+        return ret;
+    }
+    
+    micro_stream_wrapper_data *mdata = malloc(sizeof(*mdata));
+    mdata->pwops = &mdata->wops;
+    mdata->data = mdata;
+
+    mdata->wrapper_orig = (php_stream_wrapper*) wrapper;
+#define set_function(name) .name = (NULL == wrapper->wops->name ? NULL: micro_wrapper_ ##name)
+    mdata->wops = (php_stream_wrapper_ops){
+        set_function(stream_opener),
+        // only hook that if opener and closer setted
+        .stream_closer = 
+            (NULL != wrapper->wops->stream_opener && NULL != wrapper->wops->stream_closer) ?
+                micro_wrapper_stream_closer : wrapper->wops->stream_closer,
+        set_function(stream_stat),
+        set_function(url_stat),
+        set_function(dir_opener),
+        .label = wrapper->wops->label,
+        set_function(unlink),
+        set_function(rename),
+        set_function(stream_mkdir),
+        set_function(stream_rmdir),
+        set_function(stream_metadata),
+    };
+#undef set_function
+    
+
+    // re-register it
+    if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, (php_stream_wrapper *)mdata))){
+        dbgprintf("failed reregister proto %s\n", proto);
+        return ret;
+    };
+    zend_hash_str_add_ptr(&reregistered_protos, proto, strlen(proto), mdata);
     return SUCCESS;
 }
 
 /*
-*	micro_hook_zend_stream_ops - hook zend_stream_open_function ...
+
+int micro_free_reregistered_protos(void){
+    int finalret = SUCCESS;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(&reregistered_protos, const char* proto, micro_php_stream_wrapper *mwrapper)
+        dbgprintf("free reregistered proto %s\n", proto);
+        int ret = SUCCESS;
+        if(SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))){
+            dbgprintf("failed unregister reregistered proto %s\n", proto);
+            finalret = ret;
+            continue;
+        }
+        if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, mwrapper->wrapper_orig))){
+            dbgprintf("failed restore reregistered proto %s\n", proto);
+            finalret = ret;
+            continue;
+        }
+        free(mwrapper->wrapper.wops);
+        free(mwrapper);
+    ZEND_HASH_FOREACH_END()
+    return finalret;
+}
 */
-int micro_hook_zend_stream_ops(void){
-	if(NULL == zend_stream_open_function){
-        // expect zend_stream_open_function to be php_stream_open_for_zend
-		// refuse to hook before zend_stream_xx_function is setted
-		return FAILURE;
-	}
-	micro_zend_stream_open_function_orig = zend_stream_open_function;
-    zend_stream_open_function = micro_stream_open_function;
-	return SUCCESS;
+
+static inline int initial_seek(php_stream * ps){
+    dbgprintf("initial seeking\n");
+    zend_off_t dummy;
+    if(0 == ps->position){
+        // not appending mode
+        ps->ops->seek(ps, 0, SEEK_SET, &dummy);
+    }else if(0 < ps->position){
+        // appending mode
+        // this will only called after micro_fileinfo_init,
+        //  so it's sure thatself size wont be smaller then sfx size.
+        ps->position -= micro_get_sfx_filesize();
+        ps->ops->seek(ps, ps->position, SEEK_SET, &dummy);
+    }else{
+        // self should be seekable, if not, why?
+        abort();
+    }
+    return SUCCESS;
 }

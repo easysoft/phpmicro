@@ -437,6 +437,12 @@ int main(int argc, char *argv[])
     zend_file_handle file_handle;
     const char * self_filename_mb = micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
+
+	if (SUCCESS != (exit_status = micro_hook_plain_files_wops())){
+		// if hook failed, go error
+		return exit_status;
+	}
+
     char * translated_path;
 	// prepare our ini entries with stub
     char * ini_entries = malloc(sizeof(HARDCODED_INI) + micro_ext_ini.size);
@@ -539,12 +545,6 @@ int main(int argc, char *argv[])
 		if(SUCCESS == zend_hash_str_del(EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY")-1)){
 			dbgprintf("remake pb constant\n");
 			zend_ini_entry * pbentry = NULL;
-			pbentry = zend_hash_str_find_ptr(
-				EG(ini_directives),
-				"ffi.enable",
-				sizeof("ffi.enable") -1
-			);
-			dbgprintf("fu ffi.enable=%s\n", ZSTR_VAL(pbentry->value));
 			if(
 				NULL != (pbentry = zend_hash_str_find_ptr(
 					EG(ini_directives),
@@ -568,7 +568,7 @@ int main(int argc, char *argv[])
 
 		module_started = 1;
 
-		if (SUCCESS != micro_hook_zend_stream_ops()){
+		if (SUCCESS != (exit_status = micro_reregister_proto("phar"))){
 			// if hook failed, go error
 			goto out;
 		}

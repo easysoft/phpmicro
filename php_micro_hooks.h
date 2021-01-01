@@ -20,5 +20,6 @@ limitations under the License.
 #define _PHP_MICRO_HOOKS_H
 
 int micro_register_post_startup_cb(void);
-int micro_hook_zend_stream_ops(void);
+int micro_hook_plain_files_wops(void);
+int micro_reregister_proto(const char* proto);
 #endif
