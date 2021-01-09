@@ -28,7 +28,6 @@ disable_huge_page.patch | Linux | Optional | disalbe max-page-size for linux bnu
 vcruntime140_\<php version\>.patch | Windows | Nessesary | disable GetModuleHandle(vcruntime140(d).dll) at sfx start
 win32_\<php version\>.patch | Windows | Nessesary | modify build system for build sfx file
 zend_stream.patch | Windows | Nessesary | modify build system for build sfx file
-phar.patch | * | Optional | modify phar extension for support
 
 Apply patch:
 

@@ -28,7 +28,6 @@ disable_huge_page.patch | Linux | 可选 | 禁用linux构建的max-page-size选�
 vcruntime140_\<php version\>.patch | Windows | 必选 | 禁用sfx启动时GetModuleHandle(vcruntime140(d).dll)
 win32_\<php version\>.patch | Windows | 必选 | 修改构建系统以静态构建
 zend_stream.patch | Windows | 必选 | 修改构建系统以静态构建
-phar.patch | * | 可选 | 实现phar的支持
 
 并分别进行patch：
 
