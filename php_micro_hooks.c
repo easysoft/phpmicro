@@ -273,52 +273,16 @@ int micro_hook_plain_files_wops(void){
 
 /* ======== things for hooking url_stream ======== */
 
-// same as php_stream_wrapper
-typedef struct _micro_stream_wrapper_data {
-    const php_stream_wrapper_ops *pwops;
-    struct _micro_stream_wrapper_data *data;
-    int is_url;
-    php_stream_wrapper_ops wops;
-    php_stream_wrapper* wrapper_orig;
-} micro_stream_wrapper_data;
-const php_stream_wrapper_ops micro_wops;
-#define orig_wrapper(wrapper) (((micro_stream_wrapper_data *)(wrapper->abstract))->wrapper_orig)
-#define ret_orig(rett, name, wrapper, ...) do {\
-    rett ret = orig_wrapper(wrapper)->wops->name(orig_wrapper(wrapper), __VA_ARGS__);\
-    wrapper->is_url = orig_wrapper(wrapper)->is_url; \
-    return ret;\
-} while(0)
+HashTable reregistered_protos = {0};
+int reregistered_protos_inited = 0;
 
-/* wrapper ops proxies here */
-static int micro_wrapper_stream_closer(php_stream_wrapper *wrapper, php_stream *stream){
-    ret_orig(int, stream_closer, wrapper, stream);
-}
-static int micro_wrapper_stream_stat(php_stream_wrapper *wrapper, php_stream *stream, php_stream_statbuf *ssb){
-    ret_orig(int, stream_stat, wrapper, stream, ssb);
-}
-static int micro_wrapper_url_stat(php_stream_wrapper *wrapper, const char *url, int flags, php_stream_statbuf *ssb, php_stream_context *context){
-    ret_orig(int, url_stat, wrapper, url, flags, ssb, context);
-}
-static php_stream *micro_wrapper_dir_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
-        int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
-    ret_orig(php_stream *, dir_opener, wrapper, filename, mode, options, opened_path, context STREAMS_CC);
-}
-static int micro_wrapper_unlink(php_stream_wrapper *wrapper, const char *url, int options, php_stream_context *context){
-    ret_orig(int, unlink, wrapper, url, options, context);
-}
-static int micro_wrapper_rename(php_stream_wrapper *wrapper, const char *url_from, const char *url_to, int options, php_stream_context *context){
-    ret_orig(int, rename, wrapper, url_from, url_to, options, context);
-}
-static int micro_wrapper_stream_mkdir(php_stream_wrapper *wrapper, const char *url, int mode, int options, php_stream_context *context){
-    ret_orig(int, stream_mkdir, wrapper, url, mode, options, context);
-}
-static int micro_wrapper_stream_rmdir(php_stream_wrapper *wrapper, const char *url, int options, php_stream_context *context){
-    ret_orig(int, stream_rmdir, wrapper, url, options, context);
-}
-static int micro_wrapper_stream_metadata(php_stream_wrapper *wrapper, const char *url, int options, void *value, php_stream_context *context){
-    ret_orig(int, stream_metadata, wrapper, url, options, value, context);
-}
-/* end of wrapper ops proxies */
+typedef struct _micro_reregistered_proto {
+    php_stream_wrapper * mwrapper;
+    php_stream_wrapper_ops * mwops;
+    php_stream_wrapper * wrapper_orig;
+    char proto[1];
+} micro_reregistered_proto;
+// no wrapper ops proxies here
 
 static inline int initial_seek(php_stream * ps);
 /*
@@ -330,11 +294,17 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
 			int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
     dbgprintf("opening file %s like url\n", filename);
 
-    php_stream * ps = orig_wrapper(wrapper)->wops->stream_opener(orig_wrapper(wrapper), filename, mode, options, opened_path, context STREAMS_REL_CC);
-    //wrapper->is_url = orig_wrapper(wrapper)->is_url;
+    micro_reregistered_proto* mdata = zend_hash_str_find_ptr(&reregistered_protos, (void*)wrapper, sizeof(*wrapper));
+    if(NULL == mdata){
+        // this should never happen
+        return NULL;
+    }
+    php_stream * ps = mdata->wrapper_orig->wops->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
+    if(NULL == ps){
+        return ps;
+    }
     const char* filename_slashed = micro_slashize(filename);
     if(
-        NULL != ps &&
         strstr(filename, "://") &&
         0 == strncmp(strstr(filename_slashed, "://") + 3, micro_get_filename_slashed(), micro_get_filename_len())
     ){
@@ -348,8 +318,6 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
     return ps;
 }
 
-HashTable reregistered_protos = {0};
-int reregistered_protos_inited = 0;
 /*
 *	micro_reregister_proto - hook some:// protocol
 *   should be called after mstartup, before start execution
@@ -361,7 +329,7 @@ int micro_reregister_proto(const char* proto){
     }
     int ret = SUCCESS;
     HashTable * ht = php_stream_get_url_stream_wrappers_hash_global();
-	const php_stream_wrapper * wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
+    php_stream_wrapper * wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
     if(NULL == wrapper){
         // no some:// found
         return SUCCESS;
@@ -371,37 +339,32 @@ int micro_reregister_proto(const char* proto){
         return ret;
     }
     
-    micro_stream_wrapper_data *mdata = malloc(sizeof(*mdata));
-    mdata->pwops = &mdata->wops;
-    mdata->data = mdata;
-    mdata->is_url = wrapper->is_url;
+    if(NULL == wrapper->wops->stream_opener){
+        // no stream_opener, just say success
+        return ret;
+    }
+    php_stream_wrapper_ops *mwops = malloc(sizeof(*mwops));
+    php_stream_wrapper *mwrapper = malloc(sizeof(*mwrapper));
+    mwrapper->wops = mwops;
+    mwrapper->abstract = wrapper->abstract;
+    mwrapper->is_url = wrapper->is_url;
 
-    mdata->wrapper_orig = (php_stream_wrapper*) wrapper;
-#define set_function(name) .name = (NULL == wrapper->wops->name ? NULL: micro_wrapper_ ##name)
-    mdata->wops = (php_stream_wrapper_ops){
-        set_function(stream_opener),
-        // only hook that if opener and closer setted
-        .stream_closer = 
-            (NULL != wrapper->wops->stream_opener && NULL != wrapper->wops->stream_closer) ?
-                micro_wrapper_stream_closer : wrapper->wops->stream_closer,
-        set_function(stream_stat),
-        set_function(url_stat),
-        set_function(dir_opener),
-        .label = wrapper->wops->label,
-        set_function(unlink),
-        set_function(rename),
-        set_function(stream_mkdir),
-        set_function(stream_rmdir),
-        set_function(stream_metadata),
-    };
-#undef set_function
+    memcpy(mwops, wrapper->wops, sizeof(*mwops));
+    mwops->stream_opener = micro_wrapper_stream_opener;
 
     // re-register it
-    if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, (php_stream_wrapper *)mdata))){
+    if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, mwrapper))){
         dbgprintf("failed reregister proto %s\n", proto);
+        free(mwops);
+        free(mwrapper);
         return ret;
     };
-    zend_hash_str_add_ptr(&reregistered_protos, proto, strlen(proto), mdata);
+    micro_reregistered_proto* pproto = malloc(sizeof(*pproto)+strlen(proto));
+    pproto->mwops = mwops;
+    pproto->mwrapper = mwrapper;
+    pproto->wrapper_orig = wrapper;
+    memcpy(pproto->proto, proto, strlen(proto));
+    zend_hash_str_add_ptr(&reregistered_protos, (void*)mwrapper, sizeof(*mwrapper), pproto);
     return SUCCESS;
 }
 
@@ -411,12 +374,9 @@ int micro_reregister_proto(const char* proto){
 */
 int micro_free_reregistered_protos(void){
     int finalret = SUCCESS;
-    zend_string *zs;
-    zval *zv;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(&reregistered_protos, zs, zv)
+    ZEND_HASH_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto* mdata)
         int ret = SUCCESS;
-        const char * proto = ZSTR_VAL(zs);
-        micro_stream_wrapper_data * mdata = Z_PTR_P(zv);
+        const char * proto = mdata->proto;
         dbgprintf("free reregistered proto %s\n", proto);
         if(SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))){
             dbgprintf("failed unregister reregistered proto %s\n", proto);
@@ -428,8 +388,10 @@ int micro_free_reregistered_protos(void){
             finalret = ret;
             continue;
         }
+        free(mdata->mwops);
+        free(mdata->mwrapper);
         free(mdata);
-    ZEND_HASH_FOREACH_END();
+    ZEND_HASH_FOREACH_END_DEL();
     return finalret;
 }
 
