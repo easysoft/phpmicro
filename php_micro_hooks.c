@@ -376,7 +376,7 @@ int micro_reregister_proto(const char* proto){
     pproto->mwops = mwops;
     pproto->mwrapper = mwrapper;
     pproto->wrapper_orig = wrapper;
-    memcpy(pproto->proto, proto, strlen(proto));
+    memcpy(pproto->proto, proto, strlen(proto)+1);
     zend_hash_str_add_ptr(&reregistered_protos, (void*)mwrapper, sizeof(*mwrapper), pproto);
     return SUCCESS;
 }
