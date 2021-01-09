@@ -63,18 +63,21 @@ limitations under the License.
 #endif
 
 static inline const char *micro_slashize(const char *x){
-    size_t size = strlen(x) + 1;
-    char * ret = malloc(size+1);
+    size_t size = strlen(x);
+    char * ret = malloc(size+2);
     memcpy(ret, x, size);
-    for(size_t i = 0; i<size - 1; i++){
+    for(size_t i = 0; i<size; i++){
         if('\\' == ret[i]){
             ret[i] = '/';
         }
     }
-    if('/' != ret[size-1]){
-        ret[size] = '/';
-        ret[size+1] = '\0';
+    if('/' != ret[size-3]){
+        ret[size-2] = '/';
+        ret[size-1] = '\0';
+    }else{
+        ret[size-2] = '\0';
     }
+    dbgprintf("slashed %s\n", ret);
     return ret;
 }
 

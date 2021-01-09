@@ -73,17 +73,13 @@ struct _ext_ini {
 
 #ifdef PHP_WIN32
 const wchar_t* micro_get_filename_w();
-const char* micro_get_filename_slashed_imp(void);
 #endif // PHP_WIN32
-
-const char * (*micro_get_filename_slashed)(void);
 
 int micro_fileinfo_init(){
     int ret = 0;
     uint32_t len = 0;
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
 #ifdef PHP_WIN32
-    micro_get_filename_slashed = micro_get_filename_slashed_imp;
     LPCWSTR self_path = micro_get_filename_w();
     HANDLE handle = CreateFileW(self_path, FILE_ATTRIBUTE_READONLY, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
     if(INVALID_HANDLE_VALUE == handle){
@@ -103,7 +99,6 @@ int micro_fileinfo_init(){
         CloseHandle(handle); \
     } } while(0)
 #else
-    micro_get_filename_slashed = micro_get_filename;
     const char* self_path = micro_get_filename();
     int fd = open(self_path, O_RDONLY);
     if(-1 == fd){
@@ -280,14 +275,6 @@ const wchar_t* micro_get_filename_w(){
 
 const char * micro_get_filename(){
     return php_win32_cp_w_to_utf8(micro_get_filename_w());
-}
-
-const char* micro_get_filename_slashed_imp(){
-    static const char* _filename_slashed = NULL;
-    if(NULL == _filename_slashed){
-        _filename_slashed = micro_slashize(micro_get_filename());
-    }
-    return _filename_slashed;
 }
 
 #elif defined(__linux)

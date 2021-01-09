@@ -239,19 +239,26 @@ php_stream *micro_php_stream_opener(php_stream_wrapper *wrapper, const char *fil
     dbgprintf("opening file %s like plain file\n", filename);
     if(NULL == micro_plain_files_wops_orig){
         // this should never happen
-        abort();
+        return NULL;
+    }
+    static const char * self_filename_slashed = NULL;
+    size_t self_filename_slashed_len = 0;
+    if(NULL == self_filename_slashed){
+        self_filename_slashed = micro_slashize(micro_get_filename());
+        self_filename_slashed_len = strlen(self_filename_slashed);
     }
     php_stream * ps = micro_plain_files_wops_orig->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
     const char* filename_slashed = micro_slashize(filename);
     if(
         NULL != ps &&
-        0 == strcmp(filename_slashed, micro_get_filename_slashed())
+        0 == strcmp(filename_slashed, self_filename_slashed)
     ){  
         dbgprintf("opening self via php_stream, hook it\n");
         if(SUCCESS == micro_modify_ops_with_offset(ps, 1)){
             initial_seek(ps);
         }
     }
+    free((void*)filename_slashed);
     dbgprintf("done opening plain file %p\n", ps);
     return ps;
 }
@@ -299,6 +306,12 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
         // this should never happen
         return NULL;
     }
+    static const char * self_filename_slashed = NULL;
+    static size_t self_filename_slashed_len = 0;
+    if(NULL == self_filename_slashed){
+        self_filename_slashed = micro_slashize(micro_get_filename());
+        self_filename_slashed_len = strlen(self_filename_slashed);
+    }
     php_stream * ps = mdata->wrapper_orig->wops->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
     if(NULL == ps){
         return ps;
@@ -306,7 +319,7 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
     const char* filename_slashed = micro_slashize(filename);
     if(
         strstr(filename, "://") &&
-        0 == strncmp(strstr(filename_slashed, "://") + 3, micro_get_filename_slashed(), micro_get_filename_len())
+        0 == strncmp(strstr(filename_slashed, "://") + 3, self_filename_slashed, self_filename_slashed_len)
     ){
         dbgprintf("stream %s is in self\n", filename);
         if(SUCCESS == micro_modify_ops_with_offset(ps, 0)){
