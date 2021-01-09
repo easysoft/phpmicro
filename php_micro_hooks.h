@@ -19,7 +19,25 @@ limitations under the License.
 #ifndef _PHP_MICRO_HOOKS_H
 #define _PHP_MICRO_HOOKS_H
 
+#include "php_micro.h"
+
+/*
+*	micro_register_post_startup_cb - register post mstartup callback
+*/
 int micro_register_post_startup_cb(void);
+/*
+*	micro_hook_plain_files_wops - hook plain file wrapper php_plain_files_wrapper
+*/
 int micro_hook_plain_files_wops(void);
+/*
+*	micro_reregister_proto - hook some:// protocol
+*   should be called after mstartup, before start execution
+*/
 int micro_reregister_proto(const char* proto);
+/*
+*	micro_free_reregistered_protos - remove hook of protocol schemes
+*   should be called before mshutdown, after rshutdown
+*/
+int micro_free_reregistered_protos(void);
+
 #endif

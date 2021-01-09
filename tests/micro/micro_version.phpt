@@ -7,7 +7,7 @@ if("micro" !== php_sapi_name()){
 }
 --FILE--
 <?php
-var_dump(micro_version()[0], micro_version()[1], micro_version()[2], isset(micro_version()[3])?micro_version()[3]:NULL);
+var_dump(micro_version()[0], micro_version()[1], micro_version()[2], isset(micro_version()[3])?micro_version()[3]:"none");
 --EXPECTF--
 int(%d)
 int(%d)

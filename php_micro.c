@@ -360,10 +360,14 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_version, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
+ZEND_END_ARG_INFO()
+
 static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
     PHP_FE(micro_version, arginfo_micro_version)
+    PHP_FE(micro_open_self, arginfo_micro_open_self)
 #ifdef _DEBUG
     ZEND_FE(dl, arginfo_dl)
     PHP_FE(micro_update_extension_dir, arginfo_micro_update_extension_dir)
@@ -438,10 +442,10 @@ int main(int argc, char *argv[])
     const char * self_filename_mb = micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
 
-	if (SUCCESS != (exit_status = micro_hook_plain_files_wops())){
-		// if hook failed, go error
-		return exit_status;
-	}
+    if (SUCCESS != (exit_status = micro_hook_plain_files_wops())){
+        // if hook failed, go error
+        return exit_status;
+    }
 
     char * translated_path;
 	// prepare our ini entries with stub
@@ -565,6 +569,11 @@ int main(int argc, char *argv[])
 				;
 			}
 		}
+        /*
+        if (SUCCESS != (exit_status = micro_open_self_stream())){
+            goto out;
+        }
+        */
 
 		module_started = 1;
 
@@ -638,6 +647,7 @@ out:
     if (ini_entries) {
         free(ini_entries);
     }
+    micro_free_reregistered_protos();
     if (module_started) {
         dbgprintf("mshutdown\n");
         php_module_shutdown();

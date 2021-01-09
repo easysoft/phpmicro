@@ -24,8 +24,6 @@ limitations under the License.
 
 #include "php.h"
 
-#include "php_micro_helper.h"
-
 uint32_t micro_get_sfx_filesize(void);
 
 #ifdef PHP_WIN32

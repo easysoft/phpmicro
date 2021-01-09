@@ -21,6 +21,7 @@ limitations under the License.
 #include "php.h"
 
 #include "php_micro.h"
+#include "php_micro_fileinfo.h"
 
 #if defined(PHP_WIN32) && defined(_DEBUG)
 
@@ -176,18 +177,6 @@ MICRO_SFX_EXPORT void emptyfunc(void){
 
 }
 
-/*
-*   dbgprintf - a printf(3) wrapper
-*   only for debug print
-*/
-MICRO_SFX_EXPORT int dbgprintf(const char * fmt, ...){
-    va_list args;
-    va_start(args, fmt);
-    //_setmode( _fileno( stdout ), _O_U16TEXT );
-    int ret = vprintf(fmt, args);
-    va_end(args);
-    return ret;
-}
 #endif //_DEBUG
 
 PHP_FUNCTION(micro_version){
@@ -204,3 +193,15 @@ PHP_FUNCTION(micro_version){
     zend_hash_next_index_insert(Z_ARRVAL_P(return_value), &zv);
 #   endif
 }
+
+PHP_FUNCTION(micro_open_self){
+    php_stream* stream = NULL;
+    FILE * fp = VCWD_FOPEN(micro_get_filename(), "rb");
+    stream = php_stream_fopen_from_file(fp, "rb");
+    if(NULL == stream){
+        RETURN_FALSE;
+    }
+    php_stream_to_zval(stream, return_value);
+}
+
+

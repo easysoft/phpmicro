@@ -193,7 +193,7 @@ set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfi
 
 const BUFSIZE = 4096;
 function writesfx($out){
-    $sfx = fopen(micro_get_self_filename(), "rb");
+    $sfx = micro_open_self();
     // write sfx header
     $size = micro_get_sfx_filesize();
     for(; $size > 0; $size -= BUFSIZE){

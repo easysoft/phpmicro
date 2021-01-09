@@ -68,12 +68,14 @@ typedef struct _micro_php_stream_ops {
 // use with-offset ops as ps->ops
 #define ours_ops(ps) \
     ps->ops = myops;
-#define ret_orig(rtyp, name, stream, ...) do{\
+#define ret_orig(rtyp, name, stream, args) do{\
     orig_ops(myops, stream);\
-    rtyp ret = stream->ops->name(stream, __VA_ARGS__);\
+    rtyp ret = stream->ops->name(stream args);\
     ours_ops(stream);\
     return ret;\
 } while (0)
+#define with_args(...) , __VA_ARGS__
+#define nope
 
 /* ops proxies here
 *   why there're many proxies:
@@ -84,22 +86,24 @@ typedef struct _micro_php_stream_ops {
 */
 /* stdio like functions - these are mandatory! */
 static ssize_t micro_php_stream_write(php_stream *stream, const char *buf, size_t count){
-    ret_orig(ssize_t, write, stream, buf, count);
+    ret_orig(ssize_t, write, stream, with_args(buf, count));
 }
 static ssize_t micro_php_stream_read(php_stream *stream, char *buf, size_t count){
-    ret_orig(ssize_t, read, stream, buf, count);
+    ret_orig(ssize_t, read, stream, with_args(buf, count));
 }
 static int micro_php_stream_flush(php_stream *stream){
-    ret_orig(int, flush, stream);
+    ret_orig(int, flush, stream, nope);
 }
 /* these are optional */
 static int micro_php_stream_cast(php_stream *stream, int castas, void **_ret){
-    ret_orig(int, cast, stream, castas, _ret);
+    ret_orig(int, cast, stream, with_args(castas, _ret));
 }
 static int micro_php_stream_stat(php_stream *stream, php_stream_statbuf *ssb){
-    ret_orig(int, stat, stream, ssb);
+    ret_orig(int, stat, stream, with_args(ssb));
 }
 #undef ret_orig
+#undef with_args
+#undef nope
 /* end of ops proxies */
 
 /* stream ops hookers */
@@ -191,7 +195,7 @@ static int micro_php_stream_close_with_offset(php_stream *stream, int close_hand
 /*
 *   micro_modify_ops_with_offset - modify a with-offset ops struct, the argument ps must be created
 */
-static inline const int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
+static inline int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
     dbgprintf("compare %p, %p\n", ps->ops->close, micro_php_stream_close_with_offset);
     if (
         ps->ops->close == micro_php_stream_close_with_offset
@@ -327,7 +331,7 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
     dbgprintf("opening file %s like url\n", filename);
 
     php_stream * ps = orig_wrapper(wrapper)->wops->stream_opener(orig_wrapper(wrapper), filename, mode, options, opened_path, context STREAMS_REL_CC);
-    wrapper->is_url = orig_wrapper(wrapper)->is_url;
+    //wrapper->is_url = orig_wrapper(wrapper)->is_url;
     const char* filename_slashed = micro_slashize(filename);
     if(
         NULL != ps &&
@@ -370,6 +374,7 @@ int micro_reregister_proto(const char* proto){
     micro_stream_wrapper_data *mdata = malloc(sizeof(*mdata));
     mdata->pwops = &mdata->wops;
     mdata->data = mdata;
+    mdata->is_url = wrapper->is_url;
 
     mdata->wrapper_orig = (php_stream_wrapper*) wrapper;
 #define set_function(name) .name = (NULL == wrapper->wops->name ? NULL: micro_wrapper_ ##name)
@@ -390,7 +395,6 @@ int micro_reregister_proto(const char* proto){
         set_function(stream_metadata),
     };
 #undef set_function
-    
 
     // re-register it
     if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, (php_stream_wrapper *)mdata))){
@@ -402,28 +406,32 @@ int micro_reregister_proto(const char* proto){
 }
 
 /*
-
+*	micro_free_reregistered_protos - remove hook of protocol schemes
+*   should be called before mshutdown, after rshutdown
+*/
 int micro_free_reregistered_protos(void){
     int finalret = SUCCESS;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(&reregistered_protos, const char* proto, micro_php_stream_wrapper *mwrapper)
-        dbgprintf("free reregistered proto %s\n", proto);
+    zend_string *zs;
+    zval *zv;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(&reregistered_protos, zs, zv)
         int ret = SUCCESS;
+        const char * proto = ZSTR_VAL(zs);
+        micro_stream_wrapper_data * mdata = Z_PTR_P(zv);
+        dbgprintf("free reregistered proto %s\n", proto);
         if(SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))){
             dbgprintf("failed unregister reregistered proto %s\n", proto);
             finalret = ret;
             continue;
         }
-        if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, mwrapper->wrapper_orig))){
+        if(SUCCESS != (ret = php_register_url_stream_wrapper(proto, mdata->wrapper_orig))){
             dbgprintf("failed restore reregistered proto %s\n", proto);
             finalret = ret;
             continue;
         }
-        free(mwrapper->wrapper.wops);
-        free(mwrapper);
-    ZEND_HASH_FOREACH_END()
+        free(mdata);
+    ZEND_HASH_FOREACH_END();
     return finalret;
 }
-*/
 
 static inline int initial_seek(php_stream * ps){
     dbgprintf("initial seeking\n");
