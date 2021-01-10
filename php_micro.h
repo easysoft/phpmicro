@@ -71,11 +71,11 @@ static inline const char *micro_slashize(const char *x){
             ret[i] = '/';
         }
     }
-    if('/' != ret[size-3]){
-        ret[size-2] = '/';
-        ret[size-1] = '\0';
+    if('/' != ret[size-1]){
+        ret[size] = '/';
+        ret[size+1] = '\0';
     }else{
-        ret[size-2] = '\0';
+        ret[size] = '\0';
     }
     dbgprintf("slashed %s\n", ret);
     return ret;
