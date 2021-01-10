@@ -85,20 +85,20 @@ typedef struct _micro_php_stream_ops {
 *   so we use these proxies to call original operation functions
 */
 /* stdio like functions - these are mandatory! */
-static ssize_t micro_php_stream_write(php_stream *stream, const char *buf, size_t count){
+static ssize_t micro_plain_files_write(php_stream *stream, const char *buf, size_t count){
     ret_orig(ssize_t, write, stream, with_args(buf, count));
 }
-static ssize_t micro_php_stream_read(php_stream *stream, char *buf, size_t count){
+static ssize_t micro_plain_files_read(php_stream *stream, char *buf, size_t count){
     ret_orig(ssize_t, read, stream, with_args(buf, count));
 }
-static int micro_php_stream_flush(php_stream *stream){
+static int micro_plain_files_flush(php_stream *stream){
     ret_orig(int, flush, stream, nope);
 }
 /* these are optional */
-static int micro_php_stream_cast(php_stream *stream, int castas, void **_ret){
+static int micro_plain_files_cast(php_stream *stream, int castas, void **_ret){
     ret_orig(int, cast, stream, with_args(castas, _ret));
 }
-static int micro_php_stream_stat(php_stream *stream, php_stream_statbuf *ssb){
+static int micro_plain_files_stat(php_stream *stream, php_stream_statbuf *ssb){
     ret_orig(int, stat, stream, with_args(ssb));
 }
 #undef ret_orig
@@ -108,10 +108,10 @@ static int micro_php_stream_stat(php_stream *stream, php_stream_statbuf *ssb){
 
 /* stream ops hookers */
 /*
-*	micro_php_stream_set_option - php_stream sef_option op with offset
+*	micro_plain_files_set_option - php_stream sef_option op with offset
 *	 to fix mmap-like behaiver
 */
-static int micro_php_stream_set_option(php_stream *stream, int option, int value, void *ptrparam){
+static int micro_plain_files_set_option(php_stream *stream, int option, int value, void *ptrparam){
     void* myptrparam = ptrparam;
 
     if(option == PHP_STREAM_OPTION_MMAP_API && value == PHP_STREAM_MMAP_MAP_RANGE){
@@ -132,10 +132,10 @@ static int micro_php_stream_set_option(php_stream *stream, int option, int value
     return ret;
 }
 /*
-*	micro_php_stream_seek_with_offset - php_stream seek op with offset
+*	micro_plain_files_seek_with_offset - php_stream seek op with offset
 *	 return -1 for failed or 0 for success (behaives like fseek)
 */
-int micro_php_stream_seek_with_offset(php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset){
+static int micro_plain_files_seek_with_offset(php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset){
     dbgprintf("seeking %zd with offset %d whence %d\n", offset, micro_get_sfx_filesize(), whence);
     int ret = -1;
     zend_off_t realoffset;
@@ -159,9 +159,9 @@ int micro_php_stream_seek_with_offset(php_stream *stream, zend_off_t offset, int
 }
 
 /*
-*	micro_php_stream_stat_with_offset - php_stream stat op with offset
+*	micro_plain_files_stat_with_offset - php_stream stat op with offset
 */
-int micro_php_stream_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb){
+static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb){
     int ret = -1;
 
     orig_ops(myops, stream);
@@ -176,9 +176,9 @@ int micro_php_stream_stat_with_offset(php_stream *stream, php_stream_statbuf *ss
 }
 
 /*
-*	micro_php_stream_close_with_offset - php_stream close destroyer
+*	micro_plain_files_close_with_offset - php_stream close destroyer
 */
-static int micro_php_stream_close_with_offset(php_stream *stream, int close_handle){
+static int micro_plain_files_close_with_offset(php_stream *stream, int close_handle){
     dbgprintf("closing with-offset file %p\n", stream);
 
     orig_ops(myops, stream);
@@ -196,9 +196,9 @@ static int micro_php_stream_close_with_offset(php_stream *stream, int close_hand
 *   micro_modify_ops_with_offset - modify a with-offset ops struct, the argument ps must be created
 */
 static inline int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
-    dbgprintf("compare %p, %p\n", ps->ops->close, micro_php_stream_close_with_offset);
+    dbgprintf("compare %p, %p\n", ps->ops->close, micro_plain_files_close_with_offset);
     if (
-        ps->ops->close == micro_php_stream_close_with_offset
+        ps->ops->close == micro_plain_files_close_with_offset
     ){
         dbgprintf("offset alread set, skip it\n");
         return FAILURE;
@@ -207,16 +207,16 @@ static inline int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
     //micro_php_stream_ops *ret = malloc(sizeof(*ret));
     (*ret).ops = (php_stream_ops){
         // set with-offset op handlers
-        .close = micro_php_stream_close_with_offset,
-        .seek = NULL == ps->ops->seek ? NULL : micro_php_stream_seek_with_offset,
+        .close = micro_plain_files_close_with_offset,
+        .seek = NULL == ps->ops->seek ? NULL : micro_plain_files_seek_with_offset,
         .stat = NULL == ps->ops->stat ? NULL : 
-            (0 == mod_stat ? micro_php_stream_stat : micro_php_stream_stat_with_offset),
+            (0 == mod_stat ? micro_plain_files_stat : micro_plain_files_stat_with_offset),
         // set proxies
-        .write = micro_php_stream_write,
-        .read = micro_php_stream_read,
-        .flush = micro_php_stream_flush,
-        .cast = NULL == ps->ops->cast ? NULL : micro_php_stream_cast,
-        .set_option = NULL == ps->ops->set_option ? NULL : micro_php_stream_set_option,
+        .write = micro_plain_files_write,
+        .read = micro_plain_files_read,
+        .flush = micro_plain_files_flush,
+        .cast = NULL == ps->ops->cast ? NULL : micro_plain_files_cast,
+        .set_option = NULL == ps->ops->set_option ? NULL : micro_plain_files_set_option,
         // set original label
         .label = ps->ops->label,
     };
@@ -230,11 +230,11 @@ static inline int micro_modify_ops_with_offset(php_stream * ps, int mod_stat){
 const php_stream_wrapper_ops* micro_plain_files_wops_orig = NULL;
 static inline int initial_seek(php_stream * ps);
 /*
-*   micro_php_stream_opener - php_stream_opener that modify ops according to filename
+*   micro_plain_files_opener - stream_opener that modify ops according to filename
 *   replaces php_plain_files_stream_opener
 *   should be called after micro_fileinfo_init
 */
-php_stream *micro_php_stream_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
+static php_stream *micro_plain_files_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
 			int options, zend_string **opened_path, php_stream_context *context STREAMS_DC){
     dbgprintf("opening file %s like plain file\n", filename);
     if(NULL == micro_plain_files_wops_orig){
@@ -248,11 +248,11 @@ php_stream *micro_php_stream_opener(php_stream_wrapper *wrapper, const char *fil
         self_filename_slashed_len = strlen(self_filename_slashed);
     }
     php_stream * ps = micro_plain_files_wops_orig->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
+    if(NULL == ps){
+        return ps;
+    }
     const char* filename_slashed = micro_slashize(filename);
-    if(
-        NULL != ps &&
-        0 == strcmp(filename_slashed, self_filename_slashed)
-    ){  
+    if(0 == strcmp(filename_slashed, self_filename_slashed)){  
         dbgprintf("opening self via php_stream, hook it\n");
         if(SUCCESS == micro_modify_ops_with_offset(ps, 1)){
             initial_seek(ps);
@@ -261,6 +261,36 @@ php_stream *micro_php_stream_opener(php_stream_wrapper *wrapper, const char *fil
     free((void*)filename_slashed);
     dbgprintf("done opening plain file %p\n", ps);
     return ps;
+}
+
+/*
+*   micro_plain_files_url_stater - url_stater that modify stat according to filename
+*   replaces php_plain_files_url_stater
+*   should be called after micro_fileinfo_init
+*/
+static int micro_plain_files_url_stater(php_stream_wrapper *wrapper, const char *url, int flags, php_stream_statbuf *ssb, php_stream_context *context){
+    dbgprintf("stating file %s like plain file\n", url);
+    if(NULL == micro_plain_files_wops_orig){
+        // this should never happen
+        return FAILURE;
+    }
+    static const char * self_filename_slashed = NULL;
+    size_t self_filename_slashed_len = 0;
+    if(NULL == self_filename_slashed){
+        self_filename_slashed = micro_slashize(micro_get_filename());
+        self_filename_slashed_len = strlen(self_filename_slashed);
+    }
+    int ret = micro_plain_files_wops_orig->url_stat(wrapper, url, flags, ssb, context);
+    if(SUCCESS != ret){
+        return ret;
+    }
+    const char* filename_slashed = micro_slashize(url);
+    if(0 == strcmp(filename_slashed, self_filename_slashed)){  
+        dbgprintf("stating self via plain file wops, hook it\n");
+        ssb->sb.st_size -= micro_get_sfx_filesize();
+    }
+    free((void*)filename_slashed);
+    return ret;
 }
 
 // with-offset wrapper ops to replace php_plain_files_wrapper.wops
@@ -272,7 +302,8 @@ static php_stream_wrapper_ops micro_plain_files_wops_with_offset ;
 int micro_hook_plain_files_wops(void){
     micro_plain_files_wops_orig = php_plain_files_wrapper.wops;
     memcpy(&micro_plain_files_wops_with_offset, micro_plain_files_wops_orig, sizeof(*micro_plain_files_wops_orig));
-    micro_plain_files_wops_with_offset.stream_opener = micro_php_stream_opener;
+    micro_plain_files_wops_with_offset.stream_opener = micro_plain_files_opener;
+    micro_plain_files_wops_with_offset.url_stat = micro_plain_files_url_stater;
     //micro_plain_files_wops_with_offset.stream_opener = micro_php_stream_closer;
     php_plain_files_wrapper.wops = &micro_plain_files_wops_with_offset;
     return SUCCESS;
