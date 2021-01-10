@@ -39,7 +39,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             exit(1);
         case "-c":
             $v = argvalue2($arg);
-            if(isdir($v)){
+            if(is_dir($v)){
                 foreach (scandir($v) as $fn){
                     if(strpos($fn, ".ini") == strlen($fn) - 4){
                         addinifile(pathjoin($v, $fn));
