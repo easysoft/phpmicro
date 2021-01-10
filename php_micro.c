@@ -440,6 +440,8 @@ int main(int argc, char *argv[])
     dbgprintf("myfinalsize is %d\n", sfx_filesize);
     zend_file_handle file_handle;
     const char * self_filename_mb = micro_get_filename();
+    php_self = (char*)micro_get_filename();
+    script_filename = (char*)micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
 
     if (SUCCESS != (exit_status = micro_hook_plain_files_wops())){
