@@ -11,6 +11,9 @@ these tests may be skipped in command line via modiffied run-tests.php
  - Zend/tests/lc_ctype_inheritance.phpt: setlocale(3) may not be usable in static build
  - ext/phar/tests/cache_list/copyonwrite*.phar.php micro donot support write on self file
  - ext/pcntl/tests/pcntl_exec.phpt: fakephp not supported stdin codes yet
+ - ext/standard/tests/general_functions/phpinfo.phpt: micro's phpinfo() is no same as cli
+ - ext/standard/tests/url/get_headers_error_003.phpt: micro should not use cli "-S" command line option
+ - ext/standard/tests/versioning/php_sapi_name.phpt: micro do not have a SAPI name "c$ci"
 
 these tests may failed if not using cli_checks.patch because of php internel sapi name checks.
 
