@@ -27,7 +27,7 @@ _MICRO_LINKALL="$(LINK)" /nologo \
 _MICRO_MT=if $(MT) neq "" if exist $(BUILD_DIR)\php-micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\php-micro.exe.manifest -outputresource:$(MICRO_SFX);1
 
 # for 2-step generation
-$(MICRO_SFX): $(MICRO_LINKING_OBJS) $(BUILD_DIR)\php-micro.exe.manifest
+$(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\php-micro.exe.manifest
 	@echo Prebuilding
 	@$(_MICRO_RES_BUILD) /d SFX_FILESIZE=0xcafebabeL sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
@@ -40,4 +40,4 @@ sfx: $(MICRO_SFX)
 	@echo Done build micro sfx
 
 sfx_test: $(MICRO_SFX)
-	@echo start testing
+	@echo start testing (not implemented, dry-run only)
