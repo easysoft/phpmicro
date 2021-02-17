@@ -72,6 +72,9 @@ dnl prepare stat command
     MICRO_CFLAGS=-D_DEBUG
   fi
   PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c php_micro_hooks.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), '$(SAPI_MICRO_PATH)')
+  dnl add cli_???_process_title functions
+  PHP_ADD_SOURCES_X(sapi/cli, php_cli_process_title.c ps_title.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1, PHP_MICRO_OBJS)
+  dnl add 2-stage build object
   PHP_SUBST(MICRO_2STAGE_OBJS)
   PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE) -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), MICRO_2STAGE_OBJS)
 

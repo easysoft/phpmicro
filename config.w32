@@ -6,6 +6,8 @@ ARG_ENABLE('micro-win32', 'Build console-less micro PHP sfx', 'no');
 
 if (PHP_MICRO == "yes") {
 	SAPI('micro', 'php_micro.c php_micro_fileinfo.c php_micro_helper.c php_micro_hooks.c', 'php-micro.exe', '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+	// add cli_???_process_title sources
+	ADD_SOURCES('sapi/cli', 'php_cli_process_title.c ps_title.c', 'micro');
 	
 	ADD_FLAG('CFLAGS_MICRO_OBJ', '/TC /W3 /we4013 /wd4244 /wd4018');
 

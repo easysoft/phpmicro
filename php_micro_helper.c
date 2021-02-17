@@ -203,5 +203,3 @@ PHP_FUNCTION(micro_open_self){
     }
     php_stream_to_zval(stream, return_value);
 }
-
-

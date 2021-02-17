@@ -61,6 +61,11 @@ void php_win32_init_gettimeofday(void);
 
 
 #include "ext/standard/php_standard.h"
+#include "sapi/cli/ps_title.h"
+#include "sapi/cli/php_cli_process_title.h"
+#if PHP_VERSION_ID >= 80000
+#   include "sapi/cli/php_cli_process_title_arginfo.h"
+#endif
 
 #include "SAPI.h"
 
@@ -364,10 +369,12 @@ ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
 static const zend_function_entry additional_functions[] = {
+    // micro sapi functions
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
     PHP_FE(micro_version, arginfo_micro_version)
     PHP_FE(micro_open_self, arginfo_micro_open_self)
+    // debug functions
 #ifdef _DEBUG
     ZEND_FE(dl, arginfo_dl)
     PHP_FE(micro_update_extension_dir, arginfo_micro_update_extension_dir)
@@ -375,6 +382,9 @@ static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_enum_modules, arginfo_micro_enum_modules)
 #endif // PHP_WIN32
 #endif // _DEBUG
+    // cli functions
+	PHP_FE(cli_set_process_title, arginfo_cli_set_process_title)
+	PHP_FE(cli_get_process_title, arginfo_cli_get_process_title)
     PHP_FE_END
 };
 
@@ -448,6 +458,12 @@ int main(int argc, char *argv[])
         // if hook failed, go error
         return exit_status;
     }
+
+    /*
+	 * Do not move this initialization. It needs to happen before argv is used
+	 * in any way.
+	 */
+	argv = save_ps_args(argc, argv);
 
     char * translated_path;
 	// prepare our ini entries with stub
@@ -619,10 +635,10 @@ int main(int argc, char *argv[])
         // add STD{OUT, IN, ERR} constants
         micro_register_file_handles();
         CG(skip_shebang) = 1;
-        /*zend_register_bool_constant(
+        zend_register_bool_constant(
             ZEND_STRL("PHP_CLI_PROCESS_TITLE"),
             is_ps_title_available() == PS_TITLE_SUCCESS,
-            CONST_CS, 0);*/
+            CONST_CS, 0);
         
         // ?
         zend_is_auto_global_str(ZEND_STRL("_SERVER"));
@@ -662,6 +678,7 @@ out:
     dbgprintf("tsrmshutdown\n");
     tsrm_shutdown();
 #endif
+	cleanup_ps_args(argv);
     return exit_status;
 err:
     sapi_deactivate();
@@ -669,6 +686,7 @@ err:
     exit_status = 1;
     goto out;
 
+    // never reach here
     return 0;
 }
 /* }}} */
