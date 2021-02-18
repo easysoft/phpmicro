@@ -66,7 +66,7 @@ dnl prepare stat command
   SAPI_MICRO_PATH=sapi/micro/micro.sfx
 
   dnl Select SAPI.
-  CFLAGS="$CFLAGS -DPHP_MICRO_BUILD_SFX"
+  dnl CFLAGS="$CFLAGS -DPHP_MICRO_BUILD_SFX"
   PHP_SUBST(MICRO_CFLAGS)
   if test "${enable_debug+set}" = set; then
     MICRO_CFLAGS=-D_DEBUG
