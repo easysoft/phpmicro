@@ -87,7 +87,7 @@ int micro_fileinfo_init(){
         goto end;
     }
     DWORD filesize = GetFileSize(handle, NULL);
-    printf("%d, %d\n", sfx_filesize, filesize);
+    dbgprintf("%d, %d\n", sfx_filesize, filesize);
     if (filesize <= sfx_filesize){
 		fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
