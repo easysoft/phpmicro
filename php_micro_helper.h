@@ -3,6 +3,7 @@ micro SAPI for PHP - php_micro_helper.h
 header for micro helpers
 
 Copyright 2020 Longyan
+Copyright 2022 Yun Dou <dixyes@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,43 +25,44 @@ limitations under the License.
 
 PHP_FUNCTION(micro_version);
 /*
-*   micro_helper_init - prepare hErr and hOut for _myprintf
-*/
+ *   micro_helper_init - prepare hErr and hOut for _myprintf
+ */
 int micro_helper_init(void);
 /*
-*   micro_open_self_stream - prepare self stream without offset for php use
-*/
-//int micro_open_self_stream(void);
+ *   micro_open_self_stream - prepare self stream without offset for php use
+ */
+// int micro_open_self_stream(void);
 
 /*
-*   zif_micro_update_extension_dir
-*   micro_update_extension_dir(newdir) -> bool
-*   force add extension_dir out of ini
-*   only for debug in windows
-*/
+ *   zif_micro_update_extension_dir
+ *   micro_update_extension_dir(newdir) -> bool
+ *   force add extension_dir out of ini
+ *   only for debug in windows
+ */
 PHP_FUNCTION(micro_update_extension_dir);
 /*
-*   zif_micro_enum_modules
-*   micro_enum_modules() -> bool
-*   show current loaded modules(dll)
-*   only for debug in windows
-*/
+ *   zif_micro_enum_modules
+ *   micro_enum_modules() -> bool
+ *   show current loaded modules(dll)
+ *   only for debug in windows
+ */
 PHP_FUNCTION(micro_enum_modules);
 /*
-*   zif_micro_version
-*   micro_version() -> array
-*   get micro version
-*   in array():
-*       [ <major version>, <minor version>, <patch version>, [append version]]
-*   which <major version>, <minor version>, <patch version> is type of int,
-*   if append version defined, append version will be string(value of PHP_MICRO_VER_APP), otherwise array length will be 3
-*/
+ *   zif_micro_version
+ *   micro_version() -> array
+ *   get micro version
+ *   in array():
+ *       [ <major version>, <minor version>, <patch version>, [append version]]
+ *   which <major version>, <minor version>, <patch version> is type of int,
+ *   if append version defined, append version will be string(value of PHP_MICRO_VER_APP), otherwise array length will
+ * be 3
+ */
 PHP_FUNCTION(micro_version);
 /*
-*   zif_micro_open_self
-*   micro_open_self() -> mixed
-*   return self php_stream handle as php resource, if it's already closed, return false
-*/
+ *   zif_micro_open_self
+ *   micro_open_self() -> mixed
+ *   return self php_stream handle as php resource, if it's already closed, return false
+ */
 PHP_FUNCTION(micro_open_self);
 
 #endif

@@ -1,0 +1,52 @@
+
+# clang-format config for clang-format 13
+
+Language: Cpp
+
+BasedOnStyle: LLVM
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterEnum: false
+  AfterStruct: false
+  AfterFunction: false
+  BeforeElse: false
+  AfterExternBlock: false
+  SplitEmptyFunction: false
+  AfterControlStatement: Never
+  SplitEmptyRecord: false
+
+IndentPPDirectives: AfterHash
+IndentCaseLabels: true
+IndentGotoLabels: true
+IndentWrappedFunctionNames: true
+
+BinPackArguments: false
+InsertTrailingCommas: Wrapped
+
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: false
+AllowShortLoopsOnASingleLine: true 
+AllowShortBlocksOnASingleLine: Empty
+ColumnLimit: 120
+
+SortIncludes: true
+AlignTrailingComments: true
+AlignConsecutiveMacros: Consecutive
+AlignEscapedNewlines: DontAlign
+AlignAfterOpenBracket: DontAlign
+AlignOperands: DontAlign
+
+MacroBlockBegin: "ZEND_.+_START|ZEND_.+_FOREACH_PTR|ZEND_.+_FOREACH|ZEND_BEGIN_ARG_INFO$"
+MacroBlockEnd: "ZEND_.+_END|ZEND_.+_END_DEL|ZEND_END_ARG_INFO$"
+TypenameMacros:
+  - 'PHP_FE'
+WhitespaceSensitiveMacros:
+  - 'STRINGIZE'
+  - 'STRINGIZE2'
+
+IncludeBlocks: Preserve

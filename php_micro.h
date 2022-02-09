@@ -3,6 +3,7 @@ micro SAPI for PHP - php_micro.h
 header for micro
 
 Copyright 2020 Longyan
+Copyright 2022 Yun Dou <dixyes@gmail.com>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ limitations under the License.
 #ifndef _PHP_MICRO_H
 #define _PHP_MICRO_H
 
-#define STRINGIZE(x) STRINGIZE2(x)
+#define STRINGIZE(x)  STRINGIZE2(x)
 #define STRINGIZE2(x) #x
 
 #define PHP_MICRO_VER_MAJ 0
@@ -27,20 +28,23 @@ limitations under the License.
 #define PHP_MICRO_VER_PAT 1
 #define PHP_MICRO_VER_APP "prealpha"
 #ifdef PHP_MICRO_VER_APP
-#define PHP_MICRO_VER_STR STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT) "-" PHP_MICRO_VER_APP
+#    define PHP_MICRO_VER_STR \
+        STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT) "-" PHP_MICRO_VER_APP
 #else
-#define PHP_MICRO_VER_STR STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT)
+#    define PHP_MICRO_VER_STR \
+        STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT)
 #endif
 
 #define PHP_MICRO_SFX_FILESIZE_ID 12345
 #ifdef PHP_WIN32
-#define PHP_MICRO_HINT_CMDC "copy /b %s + mycode.php mycode.exe"
-#define PHP_MICRO_HINT_CMDE "mycode.exe myarg1 myarg2"
+#    define PHP_MICRO_HINT_CMDC "copy /b %s + mycode.php mycode.exe"
+#    define PHP_MICRO_HINT_CMDE "mycode.exe myarg1 myarg2"
 #else
-#define PHP_MICRO_HINT_CMDC "cat %s mycode.php > mycode"
-#define PHP_MICRO_HINT_CMDE "./mycode myarg1 myarg2"
+#    define PHP_MICRO_HINT_CMDC "cat %s mycode.php > mycode && chmod 0755 ./mycode"
+#    define PHP_MICRO_HINT_CMDE "./mycode myarg1 myarg2"
 #endif
-#define PHP_MICRO_HINT "micro SAPI for PHP v" PHP_MICRO_VER_STR "\n" \
+#define PHP_MICRO_HINT \
+    "micro SAPI for PHP" PHP_VERSION " v" PHP_MICRO_VER_STR "\n" \
     "Usage: concatenate this binary with any php code then execute it.\n" \
     "for example: if we have code as mycode.php, to concatenate them, execute:\n" \
     "    " PHP_MICRO_HINT_CMDC "\n" \
@@ -48,33 +52,33 @@ limitations under the License.
     "    " PHP_MICRO_HINT_CMDE "\n"
 
 #ifdef PHP_WIN32
-# define MICRO_SFX_EXPORT __declspec(dllexport) __declspec(noinline)
+#    define MICRO_SFX_EXPORT __declspec(dllexport) __declspec(noinline)
 #else
-# define MICRO_SFX_EXPORT __attribute__((visibility ("default")))
+#    define MICRO_SFX_EXPORT __attribute__((visibility("default")))
 #endif
 
-#define PHP_MICRO_INIMARK ((uint8_t[4]) {0xfd, 0xf6, 0x69, 0xe6})
+#define PHP_MICRO_INIMARK     ((uint8_t[4]){0xfd, 0xf6, 0x69, 0xe6})
 #define PHP_MICRO_INIENTRY(x) ("micro." #x)
 
 #ifdef _DEBUG
-#define dbgprintf(...) printf(__VA_ARGS__);
+#    define dbgprintf(...) printf(__VA_ARGS__);
 #else
-#define dbgprintf(...)
+#    define dbgprintf(...)
 #endif
 
-static inline const char *micro_slashize(const char *x){
+static inline const char *micro_slashize(const char *x) {
     size_t size = strlen(x);
-    char * ret = malloc(size+2);
+    char *ret = malloc(size + 2);
     memcpy(ret, x, size);
-    for(size_t i = 0; i<size; i++){
-        if('\\' == ret[i]){
+    for (size_t i = 0; i < size; i++) {
+        if ('\\' == ret[i]) {
             ret[i] = '/';
         }
     }
-    if('/' != ret[size-1]){
+    if ('/' != ret[size - 1]) {
         ret[size] = '/';
-        ret[size+1] = '\0';
-    }else{
+        ret[size + 1] = '\0';
+    } else {
         ret[size] = '\0';
     }
     dbgprintf("slashed %s\n", ret);
