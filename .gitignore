@@ -2,3 +2,6 @@
 *.lo
 .libs
 *.sfx
+
+.vs
+.vscode
