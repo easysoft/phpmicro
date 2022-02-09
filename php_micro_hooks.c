@@ -239,10 +239,8 @@ static php_stream *micro_plain_files_opener(php_stream_wrapper *wrapper, const c
         return NULL;
     }
     static const char *self_filename_slashed = NULL;
-    size_t self_filename_slashed_len = 0;
     if (NULL == self_filename_slashed) {
         self_filename_slashed = micro_slashize(micro_get_filename());
-        self_filename_slashed_len = strlen(self_filename_slashed);
     }
     php_stream *ps = micro_plain_files_wops_orig->stream_opener(
         wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
@@ -274,10 +272,8 @@ static int micro_plain_files_url_stater(
         return FAILURE;
     }
     static const char *self_filename_slashed = NULL;
-    size_t self_filename_slashed_len = 0;
     if (NULL == self_filename_slashed) {
         self_filename_slashed = micro_slashize(micro_get_filename());
-        self_filename_slashed_len = strlen(self_filename_slashed);
     }
     int ret = micro_plain_files_wops_orig->url_stat(wrapper, url, flags, ssb, context);
     if (SUCCESS != ret) {
@@ -436,8 +432,9 @@ int micro_free_reregistered_protos(void) {
         free(mdata->mwops);
         free(mdata->mwrapper);
         free(mdata);
-    ZEND_HASH_FOREACH_END_DEL();
-    return finalret;
+        ZEND_HASH_FOREACH_END_DEL()
+            ;
+            return finalret;
 }
 
 static inline int initial_seek(php_stream *ps) {

@@ -44,12 +44,12 @@ limitations under the License.
 #    include <unistd.h>
 #endif // ndef PHP_WIN32
 
-const char *micro_get_filename();
+const char *micro_get_filename(void);
 
 // do we need uint64_t for sfx size?
 static uint32_t _final_sfx_filesize = 0;
-uint32_t _micro_get_sfx_filesize();
-uint32_t micro_get_sfx_filesize() {
+uint32_t _micro_get_sfx_filesize(void);
+uint32_t micro_get_sfx_filesize(void) {
     return _final_sfx_filesize;
 }
 
@@ -72,7 +72,7 @@ struct _ext_ini {
 const wchar_t *micro_get_filename_w();
 #endif // PHP_WIN32
 
-int micro_fileinfo_init() {
+int micro_fileinfo_init(void) {
     int ret = 0;
     uint32_t len = 0;
     uint32_t sfx_filesize = _micro_get_sfx_filesize();
@@ -197,7 +197,7 @@ end:
 /*
  *   _micro_get_sfx_filesize - get (real) sfx size using resource(win) / 2 stage build constant (others)
  */
-uint32_t _micro_get_sfx_filesize() {
+uint32_t _micro_get_sfx_filesize(void) {
     static uint32_t _sfx_filesize = SFX_FILESIZE;
 #ifdef PHP_WIN32
     dbgprintf("_sfx_filesize: %d, %p\n", _sfx_filesize, &_sfx_filesize);
@@ -275,12 +275,12 @@ const wchar_t *micro_get_filename_w() {
     return self_filename;
 }
 
-const char *micro_get_filename() {
+const char *micro_get_filename(void) {
     return php_win32_cp_w_to_utf8(micro_get_filename_w());
 }
 
 #elif defined(__linux)
-const char *micro_get_filename() {
+const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
         self_filename = malloc(PATH_MAX);
@@ -289,7 +289,7 @@ const char *micro_get_filename() {
     return self_filename;
 }
 #elif defined(__APPLE__)
-const char *micro_get_filename() {
+const char *micro_get_filename(void) {
     static const char nullstr[1] = "";
     static char *self_path = NULL;
     if (NULL == self_path) {
