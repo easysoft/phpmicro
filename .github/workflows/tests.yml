@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        phpver: ['{s:"74", l:"7.4.15"}', '{s:"80", l:"8.0.2"}']
+        phpver: ['{s:"80", l:"8.0.15"}', '{s:"81", l:"8.1.2"}']
       max-parallel: 1
     steps:
       - name: Checkout PHP
@@ -68,7 +68,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest"]
-        phpver: ['{s:"74", l:"7.4.14"}', '{s:"80", l:"8.0.1"}']
+        phpver: ['{s:"80", l:"8.0.15"}', '{s:"81", l:"8.1.2"}']
       max-parallel: 1
     steps:
       - name: Checkout PHP
