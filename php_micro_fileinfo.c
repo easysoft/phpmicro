@@ -284,7 +284,7 @@ const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
         self_filename = malloc(PATH_MAX);
-        realpath((const char *)getauxval(AT_EXECFN), self_filename);
+        (void)realpath((const char *)getauxval(AT_EXECFN), self_filename);
     }
     return self_filename;
 }
