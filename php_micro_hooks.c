@@ -372,9 +372,12 @@ int micro_reregister_proto(const char* proto){
         reregistered_protos_inited = 1;
     }
     int ret = SUCCESS;
-    HashTable * ht = php_stream_get_url_stream_wrappers_hash_global();
-    php_stream_wrapper * wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
-    if(NULL == wrapper){
+    static HashTable * ht = NULL;
+    if (ht == NULL) {
+        ht = php_stream_get_url_stream_wrappers_hash_global();
+    }
+    zval *zv = zend_hash_str_find(ht, proto, strlen(proto));
+    if (!zv) {
         // no some:// found
         return SUCCESS;
     }
@@ -382,7 +385,7 @@ int micro_reregister_proto(const char* proto){
         dbgprintf("failed unregister proto %s\n", proto);
         return ret;
     }
-    
+    php_stream_wrapper *wrapper = Z_PTR_P(zv);
     if(NULL == wrapper->wops->stream_opener){
         // no stream_opener, just say success
         return ret;
