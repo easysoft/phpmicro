@@ -409,13 +409,17 @@ int micro_reregister_proto(const char *proto) {
     return SUCCESS;
 }
 
+#ifdef ZEND_HASH_MAP_REVERSE_FOREACH_PTR
+#    define ZEND_HASH_REVERSE_FOREACH_PTR ZEND_HASH_MAP_REVERSE_FOREACH_PTR
+#endif
+
 /*
  *	micro_free_reregistered_protos - remove hook of protocol schemes
  *   should be called before mshutdown, after rshutdown
  */
 int micro_free_reregistered_protos(void) {
     int finalret = SUCCESS;
-    ZEND_HASH_MAP_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto * mdata)
+    ZEND_HASH_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto * mdata)
         int ret = SUCCESS;
         const char *proto = mdata->proto;
         dbgprintf("free reregistered proto %s\n", proto);
@@ -432,9 +436,8 @@ int micro_free_reregistered_protos(void) {
         free(mdata->mwops);
         free(mdata->mwrapper);
         free(mdata);
-        ZEND_HASH_FOREACH_END_DEL()
-            ;
-            return finalret;
+    ZEND_HASH_FOREACH_END_DEL();
+    return finalret;
 }
 
 static inline int initial_seek(php_stream *ps) {
