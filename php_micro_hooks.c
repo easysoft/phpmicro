@@ -421,7 +421,7 @@ int micro_reregister_proto(const char* proto){
 */
 int micro_free_reregistered_protos(void){
     int finalret = SUCCESS;
-    ZEND_HASH_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto* mdata)
+    ZEND_HASH_MAP_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto* mdata)
         int ret = SUCCESS;
         const char * proto = mdata->proto;
         dbgprintf("free reregistered proto %s\n", proto);
