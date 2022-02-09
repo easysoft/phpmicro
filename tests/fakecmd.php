@@ -32,7 +32,7 @@ function addinifile($f){
     unset($ini);
 }
 $modeset = false;
-for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
+for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
     switch(substr($arg, 0, 2)){
         case "-a":
             fprintf($errf, "not support for stdin codes yet\n");
@@ -136,7 +136,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
             echo "PHP " . PHP_VERSION . " (micro) (built: Jan 01 1970 00:00:00) ( NTS )\n" .
                 "Copyright (c) The PHP Group\n" .
                 "Zend Engine v0.0.0, Copyright (c) Zend Technologies\n" .
-                extension_loaded("Zend Opcache")? "with Zend OPcache v" . PHP_VERSION . ", Copyright (c), by Zend Technologies" : "" .
+                (extension_loaded("Zend Opcache") ? "with Zend OPcache v" . PHP_VERSION . ", Copyright (c), by Zend Technologies" : "") .
                 "\n";
             exit(0);
         case "-w":
@@ -153,6 +153,7 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
                         "Loaded Configuration File:         (none)\n" .
                         "Scan for additional .ini files in: (none)\n" .
                         "Additional .ini files parsed:      (none)\n";
+                    exit(0);
                 case "--rf":
                 case "--rc":
                 case "--re":
@@ -178,11 +179,11 @@ for($arg = array_shift($argv); NULL !== $argv; $arg = array_shift($argv)){
     break;
     gonext:
 }
+
 if(!$modeset){
     fprintf($errf, "run waht?\n");
     exit(1);
 }
-
 
 set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
     global $errf;
@@ -220,6 +221,9 @@ function writecode($out, $path){
 
 $ret = NULL;
 if(isset($mainpath)){
+    if (!preg_match('|~{0,1}/.+|', $mainpath)) {
+        $mainpath = "./$mainpath";
+    }
     $outpath = $mainpath . ".exe";
     $out = fopen($outpath, "wb");
 
