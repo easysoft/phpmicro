@@ -6,7 +6,7 @@ Just concat micro.sfx and random php source or phar into single file to use it.
 
 # Compatiable
 
-Yet only support PHP7.4 and 8.0; Windows,Linux,macOS.
+Yet only support PHP8+; Windows,Linux,macOS.
 
 # Build micro.sfx
 
@@ -18,16 +18,10 @@ Yet only support PHP7.4 and 8.0; Windows,Linux,macOS.
 # at PHP source dir
 git clone <url for this repo> sapi/micro
 ```
+
 2.Apply patches
 
-Patches are located at patches directory, choose patch(es) as you like：
-
-patch | platform / PHP version | Optional? | usage
---- | --- | --- | ---
-disable_huge_page.patch | Linux | Optional | disalbe max-page-size for linux bnuild，shrink sfx size (10M+ -> 5M typ.)
-vcruntime140_\<php version\>.patch | Windows | Nessesary | disable GetModuleHandle(vcruntime140(d).dll) at sfx start
-win32_\<php version\>.patch | Windows | Nessesary | modify build system for build sfx file
-zend_stream.patch | Windows | Nessesary | modify build system for build sfx file
+Patches are located at patches directory, choose patch(es) as you like, see [Readme.md](patches/Readme.md) in patches dir for detail
 
 Apply patch:
 
@@ -35,6 +29,7 @@ Apply patch:
 # at PHP source dir
 patch -p1 < sapi/micro/patches/<name of patch>
 ```
+
 ## UNIX-like Build
 
 0.Prepare build environment according to offical PHP documents.
@@ -47,19 +42,23 @@ patch -p1 < sapi/micro/patches/<name of patch>
 ```
 
 2.configure
+
 ```bash
 # at PHP source dir
 ./configure <options>
 ```
+
 Options for reference:
 
 `--disable-phpdbg --disable-cgi --disable-cli --disable-all --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
+
 ```bash
 # at PHP source dir
 make micro
 ```
+
 (`make all`(aka. `make`) may work also, but only build micro SAPI -s recommended.
 
 That built file is located at sapi/micro/micro.sfx.
@@ -76,49 +75,60 @@ buildconf
 ```
 
 2.configure
+
 ```batch
 # at PHP source dir
 configure <options>
 ```
+
 Options for reference:
 
 `--disable-all --disable-zts --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
 Due to PHP build system on Windows lack of ablity to statically build PHP binary, you cannot build micro with `nmake`
+
 ```batch
 # at PHP source dir
 nmake sfx
 ```
-That built file is located at <arch name like x64>\\<configuration like Release>\\micro.sfx.
+
+That built file is located at `<arch name like x64>\\<configuration like Release>\\micro.sfx`.
 
 # Usage
 
 Just concatenate micro.sfx and php source.
 
 For example：if contents of myawesomeapp.php is
+
 ```php
 <?php
 echo "hello, this is my awesome app." . PHP_EOL;
 ```
+
 at linux:
+
 ```bash
 cat /path/to/micro.sfx myawesomeapp.php > myawesomeapp
 chmod 0755 ./myawesomeapp
 ./myawesomeapp
 # show "hello, this is my awesome app."
 ```
+
 or Windows:
+
 ```batch
 COPY /b \path\to\micro.sfx + myawesomeapp.php myawesomeapp.exe
 myawesomeapp.exe
 REM show "hello, this is my awesome app."
 ```
+
 # Optimizations
 
 Hugepages optimization for linux in PHP build system insults huge size of sfx, if you donot take advantage of hugepages, use disable_huge_page.patch to shrink sfx size.
 
 Statically build under linux needs libc, most common glibc may be large, musl is recommended hence. manually installed musl or some distros provided musl will provide `musl-gcc` or `musl-clang` wrapper, use one of them before configure by specify CC/CXX environ, for example
+
 ```bash
 # ./buildconf things...
 export CC=musl-gcc
@@ -145,6 +155,7 @@ export CXX=musl-gcc
 make -j`nproc` &&
 make install
 ```
+
 then build micro as
 
 ```bash
@@ -154,9 +165,10 @@ export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 # ./configure balabala
 # make balabala
 ```
+
 # OSS Licese
 
-```
+```plain
 Copyright 2020 Longyan
 
 Licensed under the Apache License, Version 2.0 (the "License");
