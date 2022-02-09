@@ -28,7 +28,7 @@ jobs:
           repository: Microsoft/php-sdk-binary-tools
           path: php-sdk-binary-tools
           ref: master
-      
+
       - name: Apply patches
         shell: cmd
         working-directory: php-src
@@ -37,7 +37,7 @@ jobs:
           patch -p1 < sapi/micro/patches/vcruntime140_${{ fromJSON(matrix.phpver).s }}.patch && ^
           patch -p1 < sapi/micro/patches/win32_${{ fromJSON(matrix.phpver).s }}.patch && ^
           patch -p1 < sapi/micro/patches/zend_stream.patch
-      
+
       - name: Build PHPmicro
         shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs16-x64.bat -t {0}
         working-directory: php-src
