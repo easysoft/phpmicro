@@ -41,8 +41,8 @@ AlignEscapedNewlines: DontAlign
 AlignAfterOpenBracket: DontAlign
 AlignOperands: DontAlign
 
-MacroBlockBegin: "ZEND_.+_START|ZEND_.+_FOREACH_PTR|ZEND_.+_FOREACH|ZEND_BEGIN_ARG_INFO$"
-MacroBlockEnd: "ZEND_.+_END|ZEND_.+_END_DEL|ZEND_END_ARG_INFO$"
+MacroBlockBegin: "ZEND_.+_START|ZEND_HASH_REVERSE_FOREACH_PTR|ZEND_BEGIN_ARG_INFO$"
+MacroBlockEnd: "ZEND_.+_END|ZEND_HASH_FOREACH_END_DEL|ZEND_END_ARG_INFO$"
 TypenameMacros:
   - 'PHP_FE'
 WhitespaceSensitiveMacros:
