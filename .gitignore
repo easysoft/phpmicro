@@ -1,7 +1,11 @@
 *.o
 *.lo
-.libs
+*.a
+*.la
+*.obj
 *.sfx
+*.dep
+.libs
 
 .vs
 .vscode
