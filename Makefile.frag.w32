@@ -3,12 +3,12 @@ say_warning:
 	@echo php build system do not support statically build in win32.
 	@echo try `nmake sfx`.
 
-MICRO_SFX=$(BUILD_DIR)\php-micro.sfx
+MICRO_SFX=$(BUILD_DIR)\micro.sfx
 
-_MICRO_RES_BUILD=$(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\php-micro.exe.res \
+_MICRO_RES_BUILD=$(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/d WANT_LOGO \
-	/d FILE_DESCRIPTION="\"php-micro.exe\"" \
-	/d FILE_NAME="\"php-micro.exe\"" \
+	/d FILE_DESCRIPTION="\"micro.exe\"" \
+	/d FILE_NAME="\"micro.exe\"" \
 	/d PRODUCT_NAME="\"PHP Script Interpreter\"" \
 	/d URL="\"http://www.php.net\"" \
 	/d INTERNAL_NAME="\"MICRO SAPI\"" \
@@ -21,13 +21,13 @@ MICRO_LINKING_OBJS_RESP=$(PHP_GLOBAL_OBJS_RESP) $(STATIC_EXT_OBJS_RESP) $(MICRO_
 _MICRO_LINKALL="$(LINK)" /nologo \
 	$(MICRO_LINKING_OBJS_RESP) \
 	$(STATIC_EXT_LIBS) $(LIBS_MICRO) $(LIBS) \
-	$(BUILD_DIR)\sapi\micro\php-micro.exe.res \
+	$(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/out:$(MICRO_SFX) $(LDFLAGS) $(LDFLAGS_MICRO)
 
-_MICRO_MT=if $(MT) neq "" if exist $(BUILD_DIR)\php-micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\php-micro.exe.manifest -outputresource:$(MICRO_SFX);1
+_MICRO_MT=if $(MT) neq "" if exist $(BUILD_DIR)\micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\micro.exe.manifest -outputresource:$(MICRO_SFX);1
 
 # for 2-step generation
-$(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\php-micro.exe.manifest
+$(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manifest
 	@echo Prebuilding
 	@$(_MICRO_RES_BUILD) /d SFX_FILESIZE=0xcafebabeL sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
