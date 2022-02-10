@@ -68,7 +68,7 @@ dnl prepare stat command
   dnl Select SAPI.
   dnl CFLAGS="$CFLAGS -DPHP_MICRO_BUILD_SFX"
   PHP_SUBST(MICRO_CFLAGS)
-  if test "x${enable_debug}" != "xno"; then
+  if test "x${enable_debug##yes}" != "x${enable_debug}"; then
     MICRO_CFLAGS=-D_DEBUG
   fi
   PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c php_micro_hooks.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), '$(SAPI_MICRO_PATH)')
