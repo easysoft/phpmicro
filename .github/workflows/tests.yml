@@ -62,7 +62,7 @@ jobs:
       - name: Checkout php-sdk-binary-tools
         uses: actions/checkout@v2
         with:
-          repository: Microsoft/php-sdk-binary-tools
+          repository: php/php-sdk-binary-tools
           path: php-sdk-binary-tools
           ref: master
 
