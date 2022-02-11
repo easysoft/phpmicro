@@ -14,7 +14,7 @@ var_dump($argv, $argc);
 --EXPECTF--
 array(6) {
   [0]=>
-  string(%d) "%s/tests/micro/argvs.php"
+  string(%d) "%sargvs.php"
   [1]=>
   string(7) "-param1"
   [2]=>
@@ -29,7 +29,7 @@ array(6) {
 int(6)
 array(6) {
   [0]=>
-  string(%d) "%s/tests/micro/argvs.php"
+  string(%d) "%sargvs.php"
   [1]=>
   string(7) "-param1"
   [2]=>

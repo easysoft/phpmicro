@@ -237,7 +237,9 @@ function writecode($out, $path)
 $ret = null;
 if (isset($mainpath)) {
     if (!preg_match('|~{0,1}/.+|', $mainpath)) {
-        $mainpath = "./$mainpath";
+        if (PHP_OS_FAMILY !== 'Windows') {
+            $mainpath = './' . $mainpath;
+        }
     }
     $outpath = $mainpath . ".exe";
     $out = fopen($outpath, "wb");
@@ -255,7 +257,10 @@ if (isset($mainpath)) {
     passthru($mainpath . " " . implode(" ", $argv), $ret);
     rename($mainpath . ".orig", $mainpath);
 } else {
-    $outpath = "./temp.exe";
+    $outpath = "temp.exe";
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $outpath = './' . $outpath;
+    }
     $out = fopen($outpath, "wb");
 
     writesfx($out);
@@ -264,6 +269,7 @@ if (isset($mainpath)) {
     fclose($out);
     chmod($outpath, 0755);
 
+    echo ($outpath . " " . implode(" ", $argv) . PHP_EOL);
     passthru($outpath . " " . implode(" ", $argv), $ret);
 }
 

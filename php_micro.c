@@ -417,6 +417,9 @@ static void micro_register_file_handles(void) /* {{{ */
 }
 /* }}} */
 
+#ifdef _DEBUG
+int micro_debug = 0;
+#endif
 /* {{{ main
  */
 #ifdef PHP_MICRO_WIN32_NO_CONSOLE
@@ -426,6 +429,10 @@ int main(int argc, char *argv[])
 #endif
 {
     int exit_status = 0;
+#ifdef _DEBUG
+    const char *_debug_env = getenv("MICRO_DEBUG");
+    micro_debug = _debug_env && (int)strnlen(_debug_env, 1);
+#endif
 #if defined(PHP_WIN32) && defined(_DEBUG)
     if (0 != (exit_status = micro_helper_init())) {
         return exit_status;

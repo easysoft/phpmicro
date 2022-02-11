@@ -185,4 +185,4 @@ jobs:
       - name: Test PHPmicro
         working-directory: php-src
         run: |
-          make micro_test TESTS="sapi/micro/tests"
+          make micro_test TESTS="--color sapi/micro/tests"

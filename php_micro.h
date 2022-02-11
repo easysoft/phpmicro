@@ -61,7 +61,13 @@ limitations under the License.
 #define PHP_MICRO_INIENTRY(x) ("micro." #x)
 
 #ifdef _DEBUG
-#    define dbgprintf(...) printf(__VA_ARGS__);
+int micro_debug;
+#    define dbgprintf(...) \
+        do { \
+            if (micro_debug != 0) { \
+                printf(__VA_ARGS__); \
+            } \
+        } while (0)
 #else
 #    define dbgprintf(...)
 #endif
@@ -81,7 +87,7 @@ static inline const char *micro_slashize(const char *x) {
     } else {
         ret[size] = '\0';
     }
-    //dbgprintf("slashed %s\n", ret);
+    // dbgprintf("slashed %s\n", ret);
     return ret;
 }
 

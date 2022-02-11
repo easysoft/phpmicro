@@ -3,9 +3,10 @@ say_warning:
 	@echo php build system do not support statically build in win32.
 	@echo try `nmake micro`.
 
-MICRO_SFX=$(BUILD_DIR)\micro.sfx
+MICRO_SFX = "$(BUILD_DIR)\micro.sfx"
+MICRO_EXES = "$(BUILD_DIR)\sapi\micro\tests\simpleecho.exe" "$(BUILD_DIR)\sapi\micro\tests\fakecmd.exe"
 
-_MICRO_RES_BUILD=$(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
+_MICRO_RES_BUILD = $(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/d WANT_LOGO \
 	/d APP_LOGO="$(APP_LOGO)" \
 	/d FILE_DESCRIPTION="\"micro.exe\"" \
@@ -16,29 +17,34 @@ _MICRO_RES_BUILD=$(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/d THANKS_GUYS="\"\"" \
 	$(BASE_INCLUDES) /I$(BUILD_DIR) 
 
-MICRO_LINKING_OBJS=$(PHP_GLOBAL_OBJS) $(STATIC_EXT_OBJS) $(MICRO_GLOBAL_OBJS)
-MICRO_LINKING_OBJS_RESP=$(PHP_GLOBAL_OBJS_RESP) $(STATIC_EXT_OBJS_RESP) $(MICRO_GLOBAL_OBJS_RESP)
+MICRO_LINKING_OBJS = $(PHP_GLOBAL_OBJS) $(STATIC_EXT_OBJS) $(MICRO_GLOBAL_OBJS)
+MICRO_LINKING_OBJS_RESP = $(PHP_GLOBAL_OBJS_RESP) $(STATIC_EXT_OBJS_RESP) $(MICRO_GLOBAL_OBJS_RESP)
 
-_MICRO_LINKALL="$(LINK)" /nologo \
+_MICRO_LINKALL = @"$(LINK)" /nologo \
 	$(MICRO_LINKING_OBJS_RESP) \
 	$(STATIC_EXT_LIBS) $(LIBS_MICRO) $(LIBS) \
 	$(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/out:$(MICRO_SFX) $(LDFLAGS) $(LDFLAGS_MICRO)
 
-_MICRO_MT=if $(MT) neq "" if exist $(BUILD_DIR)\micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\micro.exe.manifest -outputresource:$(MICRO_SFX);1
+_MICRO_MT = if $(MT) neq "" if exist $(BUILD_DIR)\micro.exe.manifest $(MT) -nologo -manifest $(BUILD_DIR)\micro.exe.manifest -outputresource:$(MICRO_SFX);1
 
 # for 2-step generation
 $(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manifest
 	@echo Prebuilding
-	@$(_MICRO_RES_BUILD) /d SFX_FILESIZE=0xcafebabeL sapi\micro\php_micro.rc
+	$(_MICRO_RES_BUILD) /d SFX_FILESIZE=0xcafebabeL sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
-	@for %I in ($(MICRO_SFX)) do @$(_MICRO_RES_BUILD) /d SFX_FILESIZE="%~zI"L sapi\micro\php_micro.rc
+	@for %I in ($(MICRO_SFX)) do $(_MICRO_RES_BUILD) /d SFX_FILESIZE="%~zI"L sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
+
+$(MICRO_EXES): $(MICRO_SFX)
+	@if not exist "$(BUILD_DIR)\sapi\micro\tests" @mkdir $(BUILD_DIR)\sapi\micro\tests
+	@for %I in ($@) do copy /b $(MICRO_SFX) + sapi\micro\tests\%~nI.php %I
 
 micro: $(MICRO_SFX)
 	@echo Done build micro sfx
 
-micro_test: $(MICRO_SFX)
-	@echo start testing (not implemented, dry-run only)
+micro_test: set-tmp-env $(MICRO_SFX) $(MICRO_EXES)
+	@for /f "tokens=* usebackq" %F IN (`"$(BUILD_DIR)\sapi\micro\tests\simpleecho.exe" nonce world`) do @if not "%F" == "hello world" @echo sanity check for micro.sfx failed, the sfx generated may be corrupt.
+	@"$(BUILD_DIR)\sapi\micro\tests\fakecmd.exe" -n -d open_basedir= -d output_buffering=0 -d memory_limit=-1 run-tests.php -p "$(BUILD_DIR)\sapi\micro\tests\fakecmd.exe" -n $(TESTS)
