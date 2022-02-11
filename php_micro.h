@@ -81,7 +81,7 @@ static inline const char *micro_slashize(const char *x) {
     } else {
         ret[size] = '\0';
     }
-    dbgprintf("slashed %s\n", ret);
+    //dbgprintf("slashed %s\n", ret);
     return ret;
 }
 
