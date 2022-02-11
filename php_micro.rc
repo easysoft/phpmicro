@@ -13,8 +13,12 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 # define THANKS_GUYS ""
 #endif
 
+#ifndef APP_LOGO
+#define APP_LOGO win32\build\php.ico
+#endif
+
 #ifdef WANT_LOGO
-0 ICON win32\build\php.ico
+0 ICON APP_LOGO
 #endif
 
 PHP_MICRO_SFX_FILESIZE_ID RCDATA { SFX_FILESIZE }
@@ -65,7 +69,7 @@ BEGIN
 #endif
             VALUE "FileVersion", EXT_VERSION
             VALUE "InternalName", INTERNAL_NAME
-            VALUE "LegalCopyright", "Copyright � The PHP Group"
+            VALUE "LegalCopyright", "Copyright (c) The PHP Group"
             VALUE "LegalTrademarks", "PHP"
             VALUE "OriginalFilename", FILE_NAME
             VALUE "ProductName", "PHP"

@@ -29,7 +29,7 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 	}
 
 	if (PHP_MICRO_LOGO != "no") {
-		ADD_FLAG("CFLAGS_MICRO", '/D APP_LOGO="' + PHP_MICRO_LOGO + '"');
+		ADD_FLAG("APP_LOGO", PHP_MICRO_LOGO);
 	}
 	// for visual style
 	ADD_FLAG('LDFLAGS_MICRO', "\"/manifestdependency:" +
