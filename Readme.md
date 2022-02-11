@@ -86,11 +86,11 @@ configure <options>
 `--disable-all --disable-zts --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
-由于构建系统的实现问题， Windows下不能使用nmake命令直接构建，使用nmake sfx来构建
+由于构建系统的实现问题， Windows下不能使用nmake命令直接构建，使用nmake micro来构建
 
 ```batch
 # 在php源码目录下
-nmake sfx
+nmake micro
 ```
 
 生成的文件在 `<架构名>\\<配置名>\\micro.sfx`

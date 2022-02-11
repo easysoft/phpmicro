@@ -90,7 +90,7 @@ Due to PHP build system on Windows lack of ablity to statically build PHP binary
 
 ```batch
 # at PHP source dir
-nmake sfx
+nmake micro
 ```
 
 That built file is located at `<arch name like x64>\\<configuration like Release>\\micro.sfx`.

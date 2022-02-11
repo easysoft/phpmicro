@@ -90,7 +90,7 @@ jobs:
             --enable-session ^
             --enable-tokenizer ^
             --enable-phar && ^
-          nmake sfx
+          nmake micro
           REM TODO:
           REM --with-ffi --enable-zlib --with-curl --enable-zip
 
@@ -105,7 +105,7 @@ jobs:
         shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs16-x64.bat -t {0}
         working-directory: php-src
         run: |
-          nmake sfx_test
+          nmake micro_test
   linuxtests:
     name: Linux tests for PHP ${{ matrix.name }}
     runs-on: "ubuntu-latest"

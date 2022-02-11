@@ -1,7 +1,7 @@
 
 say_warning:
 	@echo php build system do not support statically build in win32.
-	@echo try `nmake sfx`.
+	@echo try `nmake micro`.
 
 MICRO_SFX=$(BUILD_DIR)\micro.sfx
 
@@ -36,8 +36,8 @@ $(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manif
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
 
-sfx: $(MICRO_SFX)
+micro: $(MICRO_SFX)
 	@echo Done build micro sfx
 
-sfx_test: $(MICRO_SFX)
+micro_test: $(MICRO_SFX)
 	@echo start testing (not implemented, dry-run only)
