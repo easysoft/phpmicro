@@ -1,51 +1,61 @@
 <?php
 // fake a cli command, for run tests.php
-$mainpath = NULL;
+
+
+$mainpath = null;
 $orig_argv = $argv;
 $arg0 = array_shift($argv);
 $inisets = "micro.php_binary=$arg0\n";
 $errf = STDERR;
+
 //$errf = fopen("/tmp/fakecmd.log", "ab+");
-function argvalue2($arg){
+
+function argvalue2($arg)
+{
     global $argv;
     global $errf;
-    if(strlen($arg) === 2){
+    if (strlen($arg) === 2) {
         $v = array_shift($argv);
-    }else{
+    } else {
         $v = substr($arg, 2);
     }
-    if(NULL === $v){
+    if (null === $v) {
         fprintf($errf, "failed parse arg\n");
         exit(1);
     }
     return $v;
 }
-function pathjoin($a, $b){
+
+function pathjoin($a, $b)
+{
     return rtrim($a, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $b;
 }
-function addinifile($f){
+
+function addinifile($f)
+{
     global $inisets;
-    if(false === ($ini = @file_get_contents($f))){
+    if (false === ($ini = @file_get_contents($f))) {
         return;
     }
     $inisets .= $ini . "\n";
     unset($ini);
 }
+
 $modeset = false;
-for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
-    switch(substr($arg, 0, 2)){
+for ($arg = array_shift($argv); null !== $arg; $arg = array_shift($argv)) {
+    switch (substr($arg, 0, 2)) {
         case "-a":
             fprintf($errf, "not support for stdin codes yet\n");
             exit(1);
         case "-c":
             $v = argvalue2($arg);
-            if(is_dir($v)){
-                foreach (scandir($v) as $fn){
-                    if(strpos($fn, ".ini") == strlen($fn) - 4){
+            if (is_dir($v)) {
+                foreach (scandir($v) as $fn) {
+                    if (strpos($fn, ".ini") == strlen($fn) - 4) {
                         addinifile(pathjoin($v, $fn));
                     }
                 }
-            }else{
+            } else {
                 addinifile($v);
             }
             goto gonext;
@@ -60,16 +70,16 @@ for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
         case "-d":
             $def = argvalue2($arg);
             $kv = explode("=", $def, 2);
-            if(count($kv) > 1){
-                if(
+            if (count($kv) > 1) {
+                if (
                     strlen($kv[1]) > 0 && // *val != '\0'
                     false === strpos("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890", $kv[1][0]) // !isalnum(*val) && *val != '"' && *val != '\''
-                ){
+                ) {
                     $inisets .= $kv[0] . '="' . $kv[1] . "\"\n";
-                }else{
+                } else {
                     $inisets .= $kv[0] . '=' . $kv[1] . "\n";
                 }
-            }else{
+            } else {
                 $inisets .= $def . "=1\n";
             }
             goto gonext;
@@ -77,7 +87,7 @@ for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
             fprintf($errf, "not support for stdin codes yet\n");
             exit(1);
         case "-f":
-            if($modeset){
+            if ($modeset) {
                 fprintf($errf, "mode differ\n");
                 exit(1);
             }
@@ -99,17 +109,17 @@ for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
             $zmod = get_loaded_extensions(true);
             $pmod = array_diff($all, $zmod);
             echo "[PHP Modules]\n";
-            foreach($pmod as $e){
+            foreach ($pmod as $e) {
                 echo "$e\n";
             }
             echo "\n[Zend Modules]\n";
-            foreach($zmod as $e){
+            foreach ($zmod as $e) {
                 echo "$e\n";
             }
             echo "\n";
             exit(0);
         case "-r":
-            if($modeset){
+            if ($modeset) {
                 fprintf($errf, "mode differ\n");
                 exit(1);
             }
@@ -147,7 +157,7 @@ for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
             $inisets .= "zend_extension=\"$v\"\n";
             goto gonext;
         case "--":
-            switch($arg){
+            switch ($arg) {
                 case "--ini":
                     echo "Configuration File (php.ini) Path: (none)\n" .
                         "Loaded Configuration File:         (none)\n" .
@@ -163,29 +173,31 @@ for($arg = array_shift($argv); NULL !== $arg; $arg = array_shift($argv)){
                     exit(1);
                 case "--":
                     $arg = array_shift($argv);
+                    // no break
                 default:
                     // continue
             }
+            // no break
         default:
             // continue
     }
 
-    if(!$modeset){
+    if (!$modeset) {
         $modeset = true;
         $mainpath = $arg;
-    }else {
+    } else {
         array_unshift($argv, $arg);
     }
     break;
     gonext:
 }
 
-if(!$modeset){
+if (!$modeset) {
     fprintf($errf, "run waht?\n");
     exit(1);
 }
 
-set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = NULL) use ($orig_argv){
+set_error_handler(function (?int $errno = 0, ?string $errstr = "", ?string $errfile = "", ?int $errline = 0, ?array $errcontext = null) use ($orig_argv) {
     global $errf;
     $fullcmd = implode(" ", $orig_argv);
     fprintf($errf, "$errstr \n at $errfile:$errline\n while processing cmd:\n $fullcmd\n");
@@ -193,34 +205,37 @@ set_error_handler(function(?int $errno = 0, ?string $errstr = "", ?string $errfi
 });
 
 const BUFSIZE = 4096;
-function writesfx($out){
+function writesfx($out)
+{
     $sfx = micro_open_self();
     // write sfx header
     $size = micro_get_sfx_filesize();
-    for(; $size > 0; $size -= BUFSIZE){
+    for (; $size > 0; $size -= BUFSIZE) {
         fwrite($out, fread($sfx, $size > BUFSIZE ? BUFSIZE : $size));
     }
     fclose($sfx);
 }
 
-function writeinis($out, $inisets){
-    if(strlen($inisets)>0){
+function writeinis($out, $inisets)
+{
+    if (strlen($inisets)>0) {
         fwrite($out, "\xfd\xf6\x69\xe6");
         fwrite($out, pack("N", strlen($inisets)));
         fwrite($out, $inisets);
     }
 }
 
-function writecode($out, $path){
+function writecode($out, $path)
+{
     $in = fopen($path, "rb");
-    do{
+    do {
         $wrote = fwrite($out, fread($in, BUFSIZE));
-    }while(BUFSIZE === $wrote);
+    } while (BUFSIZE === $wrote);
     fclose($in);
 }
 
-$ret = NULL;
-if(isset($mainpath)){
+$ret = null;
+if (isset($mainpath)) {
     if (!preg_match('|~{0,1}/.+|', $mainpath)) {
         $mainpath = "./$mainpath";
     }
@@ -239,7 +254,7 @@ if(isset($mainpath)){
     //copy($mainpath, $outpath);
     passthru($mainpath . " " . implode(" ", $argv), $ret);
     rename($mainpath . ".orig", $mainpath);
-}else{
+} else {
     $outpath = "./temp.exe";
     $out = fopen($outpath, "wb");
 
@@ -254,7 +269,7 @@ if(isset($mainpath)){
 
 
 // remove temp executable
-if(is_file($outpath)){
+if (is_file($outpath)) {
     unlink($outpath);
 }
 exit($ret);
