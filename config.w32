@@ -30,6 +30,8 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 
 	if (PHP_MICRO_LOGO != "no") {
 		ADD_FLAG("APP_LOGO", PHP_MICRO_LOGO);
+	} else {
+		ADD_FLAG("APP_LOGO", 'win32\\build\\php.ico');
 	}
 	// for visual style
 	ADD_FLAG('LDFLAGS_MICRO', "\"/manifestdependency:" +
@@ -68,7 +70,7 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 	try {
 		var nonce = FIBER_ASSEMBLER;
 		ADD_FLAG('MICRO_GLOBAL_OBJS', '$(BUILD_DIR)\\Zend\\jump_$(FIBER_ASM_ARCH)_ms_pe_masm.obj $(BUILD_DIR)\\Zend\\make_$(FIBER_ASM_ARCH)_ms_pe_masm.obj');
-	} catch(x) {
+	} catch (x) {
 		// do nothing
 	}
 })();
