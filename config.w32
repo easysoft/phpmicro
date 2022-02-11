@@ -1,30 +1,48 @@
 // vim:ft=javascript
 
 ARG_ENABLE('micro', 'Build micro PHP sfx', 'yes');
-//ARG_ENABLE('crt-debug', 'Enable CRT memory dumps for debugging sent to STDERR', 'no');
 ARG_ENABLE('micro-win32', 'Build console-less micro PHP sfx', 'no');
+ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 
-if (PHP_MICRO == "yes") {
+// let us donot affect globals
+(function () {
+	if (PHP_MICRO !== "yes") {
+		return;
+	}
 	SAPI('micro', 'php_micro.c php_micro_fileinfo.c php_micro_helper.c php_micro_hooks.c', 'micro.exe', '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
-	// add cli_???_process_title sources
+	// add cli_process_title sources
 	ADD_SOURCES('sapi/cli', 'php_cli_process_title.c ps_title.c', 'micro');
-	
+
 	ADD_FLAG('CFLAGS_MICRO_OBJ', '/TC /W3 /we4013 /wd4244 /wd4018');
 
 	ADD_FLAG("LIBS_MICRO", "ws2_32.lib");
 	ADD_FLAG("LIBS_MICRO", "shell32.lib");
 
 	ADD_FLAG("DEPS_MICRO", "say_warning error_out");
+	/*
 	if (PHP_CRT_DEBUG == "yes") {
 		ADD_FLAG("CFLAGS_MICRO", "/D PHP_WIN32_DEBUG_HEAP");
 	}
+	*/
 	if (PHP_MICRO_WIN32 == "yes") {
 		ADD_FLAG("CFLAGS_MICRO", "/D PHP_MICRO_WIN32_NO_CONSOLE");
 	}
 
-	if (PHP_DEBUG != "no"){
+	if (PHP_MICRO_LOGO != "no") {
+		ADD_FLAG("CFLAGS_MICRO", '/D APP_LOGO="' + PHP_MICRO_LOGO + '"');
+	}
+	// for visual style
+	ADD_FLAG('LDFLAGS_MICRO', "\"/manifestdependency:" +
+		"type='win32' " +
+		"name='Microsoft.Windows.Common-Controls' " +
+		"version='6.0.0.0' " +
+		"processorArchitecture='*' " +
+		"publicKeyToken='6595b64144ccf1df' " +
+		"language='*'\"");
+
+	if (PHP_DEBUG != "no") {
 		ADD_FLAG('LDFLAGS_MICRO', '/defaultlib:libcmtd');
-	}else{
+	} else {
 		ADD_FLAG('LDFLAGS_MICRO', '/defaultlib:libcmt');
 	}
 
@@ -34,17 +52,23 @@ if (PHP_MICRO == "yes") {
 	//ADD_FLAG('LDFLAGS_MICRO', '/nodefaultlib:LIBCMT');
 	ADD_FLAG('LDFLAGS_MICRO', '/ignore:4049');
 
-	if(PHP_FFI != 'no'){
+	if (PHP_FFI != 'no') {
 		ADD_FLAG('LDFLAGS_MICRO', '/LTCG');
 	}
 
-	//ADD_FLAG('CFLAGS', '/DPHP_MICRO_BUILD_SFX');
-
 	ADD_MAKEFILE_FRAGMENT();
-/*
-	if (CHECK_LIB("edit_a.lib;edit.lib", "cli", PHP_CLI) &&
-		CHECK_HEADER_ADD_INCLUDE("editline/readline.h", "CFLAGS_CLI")) {
-		ADD_FLAG("CFLAGS_CLI", "/D HAVE_LIBEDIT");
+	/*
+		if (CHECK_LIB("edit_a.lib;edit.lib", "cli", PHP_CLI) &&
+			CHECK_HEADER_ADD_INCLUDE("editline/readline.h", "CFLAGS_CLI")) {
+			ADD_FLAG("CFLAGS_CLI", "/D HAVE_LIBEDIT");
+		}
+	*/
+
+	// fuck fiber fuck wsh
+	try {
+		var nonce = FIBER_ASSEMBLER;
+		ADD_FLAG('MICRO_GLOBAL_OBJS', '$(BUILD_DIR)\\Zend\\jump_$(FIBER_ASM_ARCH)_ms_pe_masm.obj $(BUILD_DIR)\\Zend\\make_$(FIBER_ASM_ARCH)_ms_pe_masm.obj');
+	} catch(x) {
+		// do nothing
 	}
-*/
-}
+})();
