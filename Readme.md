@@ -1,5 +1,9 @@
 # micro 自执行SAPI
 
+![php](https://img.shields.io/badge/php-8.0--8.2-royalblue.svg)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![tests](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml/badge.svg)](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml)
+
 micro自执行SAPI提供了php“自执行文件”的可能性
 
 你只需要将构建的micro.sfx文件与任意php文件或者phar包拼接（cat或者copy /b）为一个文件就可以直接执行这个php文件
