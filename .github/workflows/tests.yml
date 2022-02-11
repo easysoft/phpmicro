@@ -105,7 +105,7 @@ jobs:
         shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs16-x64.bat -t {0}
         working-directory: php-src
         run: |
-          nmake micro_test
+          nmake micro_test TESTS="--color sapi/micro/tests"
   linuxtests:
     name: Linux tests for PHP ${{ matrix.name }}
     runs-on: "ubuntu-latest"
