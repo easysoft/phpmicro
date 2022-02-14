@@ -80,6 +80,7 @@ dnl prepare stat command
 
   OVERALL_TARGET="$OVERALL_TARGETS \$(SAPI_MICRO_PATH) \$(MICRO_EXES)"  
 
+  MICRO_LIBS='$(EXTRA_LIBS)'
   case $host_alias in
   *aix*)
     AC_MSG_ERROR(not yet support aix)
@@ -95,9 +96,18 @@ dnl prepare stat command
     MICRO_STRIP_FLAGS=""
     ;;
   *)
-    EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -all-static"
+    if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then
+      EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -all-static"
+    else
+      dnl check if cc supports -static-libgcc
+      AX_CHECK_COMPILE_FLAG([-static-libgcc], [
+        EXTRA_LDFLAGS_PROGRAM="$EXTRA_LDFLAGS_PROGRAM -static-libgcc"
+      ], [])
+      dnl replace libresolv things with static versions
+      MICRO_LIBS='$(EXTRA_LIBS:-lresolv=-Wl,-Bstatic,-lresolv,-Bdynamic)'
+    fi
     PHP_SUBST(EXTRA_LDFLAGS)
-    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) \$(MICRO_2STAGE_OBJS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) \$(MICRO_2STAGE_OBJS) ${MICRO_LIBS} \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     MICRO_STRIP_FLAGS="-s"
     ;;
   esac
