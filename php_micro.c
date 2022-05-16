@@ -449,11 +449,6 @@ int main(int argc, char *argv[])
     script_filename = (char *)micro_get_filename();
     dbgprintf("self is %s\n", self_filename_mb);
 
-    if (SUCCESS != (exit_status = micro_hook_plain_files_wops())) {
-        // if hook failed, go error
-        return exit_status;
-    }
-
     /*
      * Do not move this initialization. It needs to happen before argv is used
      * in any way.
@@ -583,6 +578,13 @@ int main(int argc, char *argv[])
 
         module_started = 1;
 
+        // hook at here for some extensions that will modify standard ops
+        if (SUCCESS != (exit_status = micro_hook_plain_files_wops())) {
+            // if hook failed, go error
+            goto out;
+        }
+
+        // hook at here for some extensions that will register proto
         if (SUCCESS != (exit_status = micro_reregister_proto("phar"))) {
             // if hook failed, go error
             goto out;
