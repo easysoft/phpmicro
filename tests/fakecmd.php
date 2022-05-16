@@ -269,7 +269,7 @@ if (isset($mainpath)) {
     fclose($out);
     chmod($outpath, 0755);
 
-    echo ($outpath . " " . implode(" ", $argv) . PHP_EOL);
+    //echo ($outpath . " " . implode(" ", $argv) . PHP_EOL);
     passthru($outpath . " " . implode(" ", $argv), $ret);
 }
 
