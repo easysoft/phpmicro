@@ -61,7 +61,7 @@ limitations under the License.
 #define PHP_MICRO_INIENTRY(x) ("micro." #x)
 
 #ifdef _DEBUG
-int micro_debug;
+extern int micro_debug;
 #    define dbgprintf(...) \
         do { \
             if (micro_debug != 0) { \

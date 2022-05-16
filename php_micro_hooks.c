@@ -310,9 +310,9 @@ HashTable reregistered_protos = {0};
 int reregistered_protos_inited = 0;
 
 typedef struct _micro_reregistered_proto {
-    php_stream_wrapper *mwrapper;
-    php_stream_wrapper_ops *mwops;
-    php_stream_wrapper *wrapper_orig;
+    php_stream_wrapper *modified_wrapper;
+    php_stream_wrapper_ops *modified_wops;
+    php_stream_wrapper *orig_wrapper;
     char proto[1];
 } micro_reregistered_proto;
 // no wrapper ops proxies here
@@ -327,8 +327,8 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
     int options, zend_string **opened_path, php_stream_context *context STREAMS_DC) {
     dbgprintf("opening file %s like url\n", filename);
 
-    micro_reregistered_proto *mdata = zend_hash_str_find_ptr(&reregistered_protos, (void *)wrapper, sizeof(*wrapper));
-    if (NULL == mdata) {
+    micro_reregistered_proto *pproto = zend_hash_str_find_ptr(&reregistered_protos, (void *)wrapper, sizeof(*wrapper));
+    if (NULL == pproto) {
         // this should never happen
         return NULL;
     }
@@ -338,8 +338,8 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
         self_filename_slashed = micro_slashize(micro_get_filename());
         self_filename_slashed_len = strlen(self_filename_slashed);
     }
-    php_stream *ps =
-        mdata->wrapper_orig->wops->stream_opener(wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
+    php_stream *ps = pproto->orig_wrapper->wops->stream_opener(
+        wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
     if (NULL == ps) {
         return ps;
     }
@@ -352,7 +352,7 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
         }
     }
     free((void *)filename_slashed);
-    dbgprintf("done opening scheme file %p\n", ps);
+    dbgprintf("done opening file %p like url\n", ps);
     return ps;
 }
 
@@ -361,52 +361,75 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
  *   should be called after mstartup, before start execution
  */
 int micro_reregister_proto(const char *proto) {
+    dbgprintf("reregister proto %s\n", proto);
+
+    php_stream_wrapper_ops *modified_wops = NULL;
+    php_stream_wrapper *modified_wrapper = NULL;
+    int ret = SUCCESS;
+    HashTable *ht = php_stream_get_url_stream_wrappers_hash_global();
+    php_stream_wrapper *orig_wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
+    if (NULL == orig_wrapper) {
+        // no wrapper found
+        goto end;
+    }
+
+    if (SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))) {
+        dbgprintf("failed unregister proto %s\n", proto);
+        goto end;
+    }
+
+    if (NULL == orig_wrapper->wops->stream_opener) {
+        // no stream_opener, just say success
+        dbgprintf("proto %s have no stream_opener\n", proto);
+        goto end;
+    }
+
     if (0 == reregistered_protos_inited) {
         zend_hash_init(&reregistered_protos, 0, NULL, ZVAL_PTR_DTOR, 1);
         reregistered_protos_inited = 1;
     }
-    int ret = SUCCESS;
-    static HashTable *ht = NULL;
-    if (ht == NULL) {
-        ht = php_stream_get_url_stream_wrappers_hash_global();
-    }
-    zval *zv = zend_hash_str_find(ht, proto, strlen(proto));
-    if (!zv) {
-        // no some:// found
-        return SUCCESS;
-    }
-    if (SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))) {
-        dbgprintf("failed unregister proto %s\n", proto);
-        return ret;
-    }
-    php_stream_wrapper *wrapper = Z_PTR_P(zv);
-    if (NULL == wrapper->wops->stream_opener) {
-        // no stream_opener, just say success
-        return ret;
-    }
-    php_stream_wrapper_ops *mwops = malloc(sizeof(*mwops));
-    php_stream_wrapper *mwrapper = malloc(sizeof(*mwrapper));
-    mwrapper->wops = mwops;
-    mwrapper->abstract = wrapper->abstract;
-    mwrapper->is_url = wrapper->is_url;
+    modified_wops = malloc(sizeof(*modified_wops));
+    modified_wrapper = malloc(sizeof(*modified_wrapper));
 
-    memcpy(mwops, wrapper->wops, sizeof(*mwops));
-    mwops->stream_opener = micro_wrapper_stream_opener;
+    modified_wrapper->wops = modified_wops;
+    modified_wrapper->abstract = orig_wrapper->abstract;
+    modified_wrapper->is_url = orig_wrapper->is_url;
+
+    // copy original to modified
+    memcpy(modified_wops, orig_wrapper->wops, sizeof(*modified_wops));
+
+    // modify stream opener
+    modified_wops->stream_opener = micro_wrapper_stream_opener;
 
     // re-register it
-    if (SUCCESS != (ret = php_register_url_stream_wrapper(proto, mwrapper))) {
+    if (SUCCESS != (ret = php_register_url_stream_wrapper(proto, modified_wrapper))) {
         dbgprintf("failed reregister proto %s\n", proto);
-        free(mwops);
-        free(mwrapper);
-        return ret;
+        goto end;
     };
+
+    // save info for freeing
     micro_reregistered_proto *pproto = malloc(sizeof(*pproto) + strlen(proto));
-    pproto->mwops = mwops;
-    pproto->mwrapper = mwrapper;
-    pproto->wrapper_orig = wrapper;
+    pproto->modified_wops = modified_wops;
+    pproto->modified_wrapper = modified_wrapper;
+    pproto->orig_wrapper = orig_wrapper;
     memcpy(pproto->proto, proto, strlen(proto) + 1);
-    zend_hash_str_add_ptr(&reregistered_protos, (void *)mwrapper, sizeof(*mwrapper), pproto);
-    return SUCCESS;
+    zend_hash_str_add_ptr(&reregistered_protos, (void *)modified_wrapper, sizeof(*modified_wrapper), pproto);
+    dbgprintf("reregistered proto (label %s) %s %p => %p %p\n",
+        orig_wrapper->wops->label,
+        proto,
+        orig_wrapper,
+        modified_wrapper,
+        modified_wops);
+
+    return ret;
+end:
+    if (modified_wops) {
+        free(modified_wops);
+    }
+    if (modified_wrapper) {
+        free(modified_wrapper);
+    }
+    return ret;
 }
 
 #ifdef ZEND_HASH_MAP_REVERSE_FOREACH_PTR
@@ -420,26 +443,26 @@ int micro_reregister_proto(const char *proto) {
  *   should be called before mshutdown, after rshutdown
  */
 int micro_free_reregistered_protos(void) {
-    int finalret = SUCCESS;
-    HASH_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto * mdata)
+    int final_ret = SUCCESS;
+    HASH_REVERSE_FOREACH_PTR(&reregistered_protos, micro_reregistered_proto * pproto)
         int ret = SUCCESS;
-        const char *proto = mdata->proto;
+        const char *proto = pproto->proto;
         dbgprintf("free reregistered proto %s\n", proto);
         if (SUCCESS != (ret = php_unregister_url_stream_wrapper(proto))) {
             dbgprintf("failed unregister reregistered proto %s\n", proto);
-            finalret = ret;
+            final_ret = ret;
             continue;
         }
-        if (SUCCESS != (ret = php_register_url_stream_wrapper(proto, mdata->wrapper_orig))) {
+        if (SUCCESS != (ret = php_register_url_stream_wrapper(proto, pproto->orig_wrapper))) {
             dbgprintf("failed restore reregistered proto %s\n", proto);
-            finalret = ret;
+            final_ret = ret;
             continue;
         }
-        free(mdata->mwops);
-        free(mdata->mwrapper);
-        free(mdata);
+        free(pproto->modified_wrapper);
+        free(pproto->modified_wops);
+        free(pproto);
     ZEND_HASH_FOREACH_END_DEL();
-    return finalret;
+    return final_ret;
 }
 
 static inline int initial_seek(php_stream *ps) {
