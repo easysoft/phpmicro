@@ -5,6 +5,7 @@
 *.obj
 *.sfx
 *.dep
+*.debug
 .libs
 
 .vs
