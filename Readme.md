@@ -8,13 +8,51 @@ micro自执行SAPI提供了php“自执行文件”的可能性
 
 你只需要将构建的micro.sfx文件与任意php文件或者phar包拼接（cat或者copy /b）为一个文件就可以直接执行这个php文件
 
-# 兼容性
+## 兼容性
 
 目前兼容PHP8+；兼容Windows、Linux、macOS。
 
-# 构建
+## 获取与使用
 
-## 准备源码
+Github actions中构建了一个很少扩展的最小micro，如果需要扩展，请自行构建，参考下方构建说明或使用 [crazywhalecc/static-php-cli](https://github.com/crazywhalecc/static-php-cli) <!-- [自动构建系统（还没做完所以就注释掉了）](https://github.com/dixyes/lwmbs/actions) -->
+
+将micro.sfx和php文件拼接即可使用
+
+例如：myawesomeapp.php内容为
+
+```php
+<?php
+echo "hello, this is my awesome app." . PHP_EOL;
+```
+
+linux/macOS下
+
+注意：在macOS下如果你的micro.sfx是下载来的，运行时提示无法打开，可能需要执行下
+
+```bash
+sudo xattr -d com.apple.quarantine /path/to/micro.sfx
+```
+
+然后
+
+```bash
+cat /path/to/micro.sfx myawesomeapp.php > myawesomeapp
+chmod 0755 ./myawesomeapp
+./myawesomeapp
+# 回显 "hello, this is my awesome app."
+```
+
+或者Windows下
+
+```batch
+COPY /b \path\to\micro.sfx + myawesomeapp.php myawesomeapp.exe
+myawesomeapp.exe
+REM 回显 "hello, this is my awesome app."
+```
+
+## 构建
+
+### 准备源码
 
 1.将本仓库clone到php源码的sapi/micro下
 
@@ -34,7 +72,7 @@ patch文件在patches目录下，选择需要的patch文件，详细作用参考
 patch -p1 < sapi/micro/patches/<name of patch>
 ```
 
-## unix-like 构建
+### unix-like 构建
 
 0.参考官方构建说明准备PHP构建环境
 
@@ -56,6 +94,11 @@ patch -p1 < sapi/micro/patches/<name of patch>
 
 `--disable-phpdbg --disable-cgi --disable-cli --disable-all --enable-micro --enable-phar --with-ffi --enable-zlib`
 
+Linux下，存在C库兼容性问题，micro构建系统提供了两种选项：
+
+- `--enable-micro=yes`或者`--enable-micro`：这将会构建PIE的动态的micro，这种micro不能跨C库调用（即在alpine上构建的使用musl的micro不能在只安装了glibc的CentOS上使用，反过来也不能），但支持ffi和PHP的`dl()`函数。
+- `--enable-micro=all-static`：这将会构建静态的micro，这种micro不依赖C库，可以直接跑在支持的Linux内核上，但不能使用ffi/`dl()`
+
 3.make
 
 ```bash
@@ -67,7 +110,7 @@ make micro
 
 生成的文件在 sapi/micro/micro.sfx
 
-## Windows 构建
+### Windows 构建
 
 0.参考官方构建说明准备PHP构建环境
 
@@ -99,39 +142,11 @@ nmake micro
 
 生成的文件在 `<架构名>\\<配置名>\\micro.sfx`
 
-# 使用
-
-将micro.sfx和php文件拼接即可
-
-例如：myawesomeapp.php内容为
-
-```php
-<?php
-echo "hello, this is my awesome app." . PHP_EOL;
-```
-
-linux下
-
-```bash
-cat /path/to/micro.sfx myawesomeapp.php > myawesomeapp
-chmod 0755 ./myawesomeapp
-./myawesomeapp
-# 回显 "hello, this is my awesome app."
-```
-
-或者Windows下
-
-```batch
-COPY /b \path\to\micro.sfx + myawesomeapp.php myawesomeapp.exe
-myawesomeapp.exe
-REM 回显 "hello, this is my awesome app."
-```
-
-# 优化
+## 优化
 
 linux下php对于hugepages优化导致了生成的文件很大，如果不考虑对hugepages的优化，使用disable_huge_page.patch来来减小文件尺寸
 
-linux下静态构建需要包含c标准库，常见的glibc较大，推荐使用musl，手动安装的musl或者某些发行版会提供gcc（或clang）的musl wrapper：musl-gcc或者musl-clang。在进行configure之前，通过指定CC和CXX变量来使用这些wrapper
+linux下静态构建需要包含c标准库，常见的glibc较大，推荐使用musl，手动安装的musl或者某些发行版会提供gcc（或clang）的musl wrapper：`musl-gcc`或者`musl-clang`。在进行configure之前，通过指定CC和CXX变量来使用这些wrapper
 
 例如
 
@@ -145,7 +160,7 @@ export CXX=musl-gcc
 
 linux下构建时一般希望是纯静态的，但构建使用的发行版不一定提供依赖的库（zlib libffi等）的静态库版本，这时考虑自行构建依赖库
 
-以libffi为例：
+以libffi为例（`all-static`构建时不支持ffi）：
 
 ```bash
 # 通过git获取源码
@@ -176,7 +191,17 @@ export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 # make balabala
 ```
 
-# 开源许可
+## 一些细节
+
+### ini配置
+
+见wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings)
+
+### PHP_BINARY常量
+
+micro中这个常量是空字符串，可以通过ini配置：`micro.php_binary=somestring`
+
+## 开源许可
 
 ```plain
 Copyright 2020 Longyan
