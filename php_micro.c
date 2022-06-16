@@ -152,7 +152,13 @@ static int php_micro_startup(sapi_module_struct *sapi_module) /* {{{ */
     */
     micro_register_post_startup_cb();
 
-    if (php_module_startup(sapi_module, NULL, 0) == FAILURE) {
+    if (
+#if PHP_VERSION_ID >= 80200
+        php_module_startup(sapi_module, NULL) == FAILURE
+#else
+        php_module_startup(sapi_module, NULL, 0) == FAILURE
+#endif
+    ) {
         return FAILURE;
     }
     return SUCCESS;
