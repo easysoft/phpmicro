@@ -29,8 +29,7 @@ jobs:
             "rev": ("php-"+.ver),
             "patch": {
               # mapping maj.min to patches used
-              # 8.0 and 8.1 shares same patch set
-              "8.1": "80",
+              "8.1": "81",
               "8.0": "80",
             }[.ver | sub("(?<v>\\d+\\.\\d+)\\..+"; .v)],
           }]' \
@@ -70,9 +69,9 @@ jobs:
         shell: cmd
         working-directory: php-src
         run: |
-          patch -p1 < sapi/micro/patches/cli_checks.patch && ^
-          patch -p1 < sapi/micro/patches/vcruntime140_${{ matrix.patch }}.patch && ^
-          patch -p1 < sapi/micro/patches/win32_${{ matrix.patch }}.patch && ^
+          patch -p1 < sapi/micro/patches/cli_checks_${{ matrix.patch }}.patch && ^
+          patch -p1 < sapi/micro/patches/vcruntime140_80.patch && ^
+          patch -p1 < sapi/micro/patches/win32_80.patch && ^
           patch -p1 < sapi/micro/patches/zend_stream.patch
 
       - name: Build PHPmicro
@@ -132,7 +131,7 @@ jobs:
       - name: Apply patches
         working-directory: php-src
         run: |
-          patch -p1 < sapi/micro/patches/cli_checks.patch &&
+          patch -p1 < sapi/micro/patches/cli_checks_${{ matrix.patch }}.patch &&
           patch -p1 < sapi/micro/patches/disable_huge_page.patch
 
       - name: Install deps
