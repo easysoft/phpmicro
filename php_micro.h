@@ -24,9 +24,9 @@ limitations under the License.
 #define STRINGIZE2(x) #x
 
 #define PHP_MICRO_VER_MAJ 0
-#define PHP_MICRO_VER_MIN 0
-#define PHP_MICRO_VER_PAT 1
-#define PHP_MICRO_VER_APP "prealpha"
+#define PHP_MICRO_VER_MIN 1
+#define PHP_MICRO_VER_PAT 0
+//#define PHP_MICRO_VER_APP "nope"
 #ifdef PHP_MICRO_VER_APP
 #    define PHP_MICRO_VER_STR \
         STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT) "-" PHP_MICRO_VER_APP
