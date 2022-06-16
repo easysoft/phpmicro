@@ -379,6 +379,8 @@ static const zend_function_entry additional_functions[] = {
 };
 // clang-format on
 
+// static php_stream *s_in_process = NULL;
+
 static void micro_register_file_handles(void) /* {{{ */
 {
     php_stream *s_in, *s_out, *s_err;
@@ -388,6 +390,17 @@ static void micro_register_file_handles(void) /* {{{ */
     s_in = php_stream_open_wrapper_ex("php://stdin", "rb", 0, NULL, sc_in);
     s_out = php_stream_open_wrapper_ex("php://stdout", "wb", 0, NULL, sc_out);
     s_err = php_stream_open_wrapper_ex("php://stderr", "wb", 0, NULL, sc_err);
+
+    /* Release stream resources, but don't free the underlying handles. Othewrise,
+     * extensions which write to stderr or company during mshutdown/gshutdown
+     * won't have the expected functionality.
+     */
+    if (s_in)
+        s_in->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+    if (s_out)
+        s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+    if (s_err)
+        s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
 
     if (s_in == NULL || s_out == NULL || s_err == NULL) {
         if (s_in)
@@ -399,11 +412,7 @@ static void micro_register_file_handles(void) /* {{{ */
         return;
     }
 
-#if PHP_DEBUG
-    /* do not close stdout and stderr */
-    s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
-    s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
-#endif
+    // s_in_process = s_in;
 
     php_stream_to_zval(s_in, &ic.value);
     php_stream_to_zval(s_out, &oc.value);
