@@ -290,7 +290,6 @@ const char *micro_get_filename(void) {
 }
 #elif defined(__APPLE__)
 const char *micro_get_filename(void) {
-    static const char nullstr[1] = "";
     static char *self_path = NULL;
     if (NULL == self_path) {
         uint32_t len = 0;
@@ -307,7 +306,9 @@ const char *micro_get_filename(void) {
     }
     return self_path;
 error:
-    self_path = nullstr;
+    if (NULL != self_path) {
+        self_path[0] = '\0';
+    }
     return NULL;
 }
 #else
