@@ -90,8 +90,6 @@ jobs:
             --enable-tokenizer ^
             --enable-phar && ^
           nmake micro
-          REM TODO:
-          REM --with-ffi --enable-zlib --with-curl --enable-zip
 
       - name: Upload built micro as artifact
         uses: actions/upload-artifact@v2
@@ -171,13 +169,86 @@ jobs:
             EXTRA_CFLAGS='-Os' \
             EXTRA_LDFLAGS_PROGRAM=-lpthread &&
           elfedit --output-osabi linux sapi/micro/micro.sfx
-        # TODO:
-        # --enable-zlib --with-curl --enable-zip onig
 
       - name: Upload built micro as artifact
         uses: actions/upload-artifact@v2
         with:
           name: micro_linux_${{ matrix.name }}
+          path: php-src/sapi/micro/micro.sfx
+          if-no-files-found: error
+
+      - name: Test PHPmicro
+        working-directory: php-src
+        run: |
+          make micro_test TESTS="--color sapi/micro/tests"
+  macostests:
+    name: macOS tests for PHP ${{ matrix.name }}
+    runs-on: "macos-latest"
+    needs: 
+      - fetchversion
+    strategy:
+      matrix:
+        include: ${{ fromJSON(needs.fetchversion.outputs.info) }}
+      max-parallel: 3
+      fail-fast: false
+    steps:
+      - name: Checkout PHP
+        uses: actions/checkout@v2
+        with:
+          repository: php/php-src
+          path: php-src
+          ref: ${{ matrix.rev }}
+
+      - name: Checkout micro
+        uses: actions/checkout@v2
+        with:
+          path: php-src/sapi/micro
+
+      - name: Apply patches
+        working-directory: php-src
+        run: |
+          patch -p1 < sapi/micro/patches/cli_checks_${{ matrix.patch }}.patch
+
+      - name: Install deps
+        run: |
+          brew install bison re2c
+
+      - name: Build PHPmicro
+        working-directory: php-src
+        run: |
+          export PATH="/usr/local/opt/bison/bin:$PATH"
+          ./buildconf --force &&
+          ./configure \
+            --disable-all \
+            --disable-cgi \
+            --disable-cli \
+            --enable-micro \
+            --disable-phpdbg \
+            --without-pear \
+            --disable-shared \
+            --enable-static \
+            --disable-dom \
+            --disable-simplexml \
+            --disable-xml \
+            --disable-xmlreader \
+            --disable-xmlwriter \
+            --enable-ctype \
+            --enable-filter \
+            --enable-mbstring \
+            --enable-session \
+            --enable-sockets \
+            --enable-tokenizer \
+            --enable-phar \
+            --enable-posix \
+            --enable-pcntl \
+            --disable-mbregex &&
+          make -j `sysctl -n hw.logicalcpu` \
+            EXTRA_CFLAGS='-Os'
+
+      - name: Upload built micro as artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: micro_macos_${{ matrix.name }}
           path: php-src/sapi/micro/micro.sfx
           if-no-files-found: error
 
