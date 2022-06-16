@@ -92,6 +92,9 @@ dnl prepare stat command
     fi
     ;;
   *darwin*)
+    if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then
+      AC_MSG_WARN(macOS donot support static mach-o build)
+    fi
     BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(MICRO_2STAGE_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     MICRO_STRIP_FLAGS=""
     ;;
