@@ -69,7 +69,11 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 	// fuck fiber fuck wsh
 	try {
 		var nonce = FIBER_ASSEMBLER;
-		ADD_FLAG('MICRO_GLOBAL_OBJS', '$(BUILD_DIR)\\Zend\\jump_$(FIBER_ASM_ARCH)_ms_pe_masm.obj $(BUILD_DIR)\\Zend\\make_$(FIBER_ASM_ARCH)_ms_pe_masm.obj');
+		if (TARGET_ARCH == 'arm64') {
+			ADD_FLAG('MICRO_GLOBAL_OBJS', '$(ASM_OBJS)');
+		} else {
+			ADD_FLAG('MICRO_GLOBAL_OBJS', '$(BUILD_DIR)\\Zend\\jump_$(FIBER_ASM_ARCH)_ms_pe_masm.obj $(BUILD_DIR)\\Zend\\make_$(FIBER_ASM_ARCH)_ms_pe_masm.obj');
+		}
 	} catch (x) {
 		// do nothing
 	}
