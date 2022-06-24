@@ -179,6 +179,29 @@ static int sapi_micro_deactivate(void) /* {{{ */
     return SUCCESS;
 }
 
+static ssize_t sapi_micro_single_write(const char *str, size_t str_length) /* {{{ */
+{
+    ssize_t ret;
+
+    /* TODO: fix
+        if (cli_shell_callbacks.cli_shell_write) {
+            cli_shell_callbacks.cli_shell_write(str, str_length);
+        }
+    */
+
+#ifdef PHP_WRITE_STDOUT
+    do {
+        ret = write(STDOUT_FILENO, str, str_length);
+    } while (ret <= 0 && errno == EAGAIN && sapi_micro_select(STDOUT_FILENO));
+#else
+    ret = fwrite(str, 1, MIN(str_length, 16384), stdout);
+    if (ret == 0 && ferror(stdout)) {
+        return -1;
+    }
+#endif
+    return ret;
+}
+
 static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
 {
     const char *ptr = str;
@@ -198,25 +221,11 @@ static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
         }
     */
 
-    while (remaining > 0) {
-        /* TODO: fix
-            if (cli_shell_callbacks.cli_shell_write) {
-                cli_shell_callbacks.cli_shell_write(str, str_length);
-            }
-        */
-
-#ifdef PHP_WRITE_STDOUT
-        do {
-            ret = write(STDOUT_FILENO, str, str_length);
-        } while (ret <= 0 && errno == EAGAIN && sapi_micro_select(STDOUT_FILENO));
-#else
-        ret = fwrite(str, 1, MIN(str_length, 16384), stdout);
-        if (ret == 0 && ferror(stdout)) {
-            ret = -1;
-        }
-#endif
+    while (remaining > 0)
+    {
+        ret = sapi_micro_single_write(ptr, remaining);
         if (ret < 0) {
-#ifndef PHP_MICRO_WIN32_NO_CONSOLE
+#ifndef PHP_CLI_WIN32_NO_CONSOLE
             EG(exit_status) = 255;
             php_handle_aborted_connection();
 #endif
@@ -309,7 +318,7 @@ static sapi_module_struct micro_sapi_module = {
 /* }}} */
 
 /*
- *	sapi_micro_ini_defaults - set overwriteable ini defaults
+ *    sapi_micro_ini_defaults - set overwriteable ini defaults
  */
 static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
     zval tmp;
@@ -368,8 +377,8 @@ static const zend_function_entry additional_functions[] = {
 #   endif // PHP_WIN32
 #endif // _DEBUG
     // cli functions
-	PHP_FE(cli_set_process_title, arginfo_cli_set_process_title)
-	PHP_FE(cli_get_process_title, arginfo_cli_get_process_title)
+    PHP_FE(cli_set_process_title, arginfo_cli_set_process_title)
+    PHP_FE(cli_get_process_title, arginfo_cli_get_process_title)
     // micro sapi functions
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
