@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
             ZEND_STRL("PHP_CLI_PROCESS_TITLE"), is_ps_title_available() == PS_TITLE_SUCCESS, CONST_CS, 0);
 
         // ?
-        zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+        zend_is_auto_global(ZSTR_KNOWN(ZEND_STR_AUTOGLOBAL_SERVER));
 
         PG(during_request_startup) = 0;
 
