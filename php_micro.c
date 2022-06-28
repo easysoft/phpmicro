@@ -80,10 +80,7 @@ const char HARDCODED_INI[] = "html_errors=0\n"
                              "max_execution_time=0\n"
                              "max_input_time=-1\n\0";
 
-static char *php_self = "";
-static char *script_filename = "";
-
-static inline int sapi_micro_select(php_socket_t fd) {
+static inline bool sapi_micro_select(php_socket_t fd) {
     fd_set wfd;
     struct timeval tv;
     int ret;
@@ -99,6 +96,82 @@ static inline int sapi_micro_select(php_socket_t fd) {
 
     return ret != -1;
 }
+
+static ssize_t sapi_micro_single_write(const char *str, size_t str_length) /* {{{ */
+{
+    ssize_t ret;
+
+    /* TODO: support shell callbacks
+        if (cli_shell_callbacks.cli_shell_write) {
+            cli_shell_callbacks.cli_shell_write(str, str_length);
+        }
+    */
+
+#ifdef PHP_WRITE_STDOUT
+    do {
+        ret = write(STDOUT_FILENO, str, str_length);
+    } while (ret <= 0 && errno == EAGAIN && sapi_micro_select(STDOUT_FILENO));
+#else
+    ret = fwrite(str, 1, MIN(str_length, 16384), stdout);
+    if (ret == 0 && ferror(stdout)) {
+        return -1;
+    }
+#endif
+    return ret;
+}
+/* }}} */
+
+static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
+{
+    const char *ptr = str;
+    size_t remaining = str_length;
+    ssize_t ret;
+
+    if (!str_length) {
+        return 0;
+    }
+    /* todo: support shell callbacks
+        if (cli_shell_callbacks.cli_shell_ub_write) {
+            size_t ub_wrote;
+            ub_wrote = cli_shell_callbacks.cli_shell_ub_write(str, str_length);
+            if (ub_wrote != (size_t) -1) {
+                return ub_wrote;
+            }
+        }
+    */
+
+    while (remaining > 0) {
+        ret = sapi_micro_single_write(ptr, remaining);
+        if (ret < 0) {
+#ifndef PHP_CLI_WIN32_NO_CONSOLE
+            EG(exit_status) = 255;
+            php_handle_aborted_connection();
+#endif
+            break;
+        }
+        ptr += ret;
+        remaining -= ret;
+    }
+
+    return (ptr - str);
+}
+/* }}} */
+
+static void sapi_micro_flush(void *server_context) /* {{{ */
+{
+    /* Ignore EBADF here, it's caused by the fact that STDIN/STDOUT/STDERR streams
+     * are/could be closed before fflush() is called.
+     */
+    if (fflush(stdout) == EOF && errno != EBADF) {
+#ifndef PHP_MICRO_WIN32_NO_CONSOLE
+        php_handle_aborted_connection();
+#endif
+    }
+}
+/* }}} */
+
+static char *php_self = "";
+static char *script_filename = "";
 
 static void sapi_micro_register_variables(zval *track_vars_array) /* {{{ */
 {
@@ -132,42 +205,16 @@ static void sapi_micro_register_variables(zval *track_vars_array) /* {{{ */
         php_register_variable("DOCUMENT_ROOT", docroot, track_vars_array);
     }
 }
+/* }}} */
 
-int micro_register_post_startup_cb(void);
-static int php_micro_startup(sapi_module_struct *sapi_module) /* {{{ */
+static void sapi_micro_log_message(const char *message, int syslog_type_int) /* {{{ */
 {
-    /*
-    zend_module_entry fake_module_entry = {
-        STANDARD_MODULE_HEADER,
-        "micro",
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        PHP_VERSION,
-        STANDARD_MODULE_PROPERTIES
-    };
-    */
-    micro_register_post_startup_cb();
-
-    if (
-#if PHP_VERSION_ID >= 80200
-        php_module_startup(sapi_module, NULL) == FAILURE
-#else
-        php_module_startup(sapi_module, NULL, 0) == FAILURE
+    fprintf(stderr, "%s\n", message);
+#ifdef PHP_WIN32
+    fflush(stderr);
 #endif
-    ) {
-        return FAILURE;
-    }
-    return SUCCESS;
 }
-
-int php_micro_module_shutdown_wrapper(sapi_module_struct *sapi_globals) {
-    php_module_shutdown();
-    return SUCCESS;
-}
+/* }}} */
 
 static int sapi_micro_deactivate(void) /* {{{ */
 {
@@ -178,77 +225,11 @@ static int sapi_micro_deactivate(void) /* {{{ */
     }
     return SUCCESS;
 }
-
-static ssize_t sapi_micro_single_write(const char *str, size_t str_length) /* {{{ */
-{
-    ssize_t ret;
-
-    /* TODO: fix
-        if (cli_shell_callbacks.cli_shell_write) {
-            cli_shell_callbacks.cli_shell_write(str, str_length);
-        }
-    */
-
-#ifdef PHP_WRITE_STDOUT
-    do {
-        ret = write(STDOUT_FILENO, str, str_length);
-    } while (ret <= 0 && errno == EAGAIN && sapi_micro_select(STDOUT_FILENO));
-#else
-    ret = fwrite(str, 1, MIN(str_length, 16384), stdout);
-    if (ret == 0 && ferror(stdout)) {
-        return -1;
-    }
-#endif
-    return ret;
-}
-
-static size_t sapi_micro_ub_write(const char *str, size_t str_length) /* {{{ */
-{
-    const char *ptr = str;
-    size_t remaining = str_length;
-    ssize_t ret;
-
-    if (!str_length) {
-        return 0;
-    }
-    /* todo: fix
-        if (cli_shell_callbacks.cli_shell_ub_write) {
-            size_t ub_wrote;
-            ub_wrote = cli_shell_callbacks.cli_shell_ub_write(str, str_length);
-            if (ub_wrote != (size_t) -1) {
-                return ub_wrote;
-            }
-        }
-    */
-
-    while (remaining > 0)
-    {
-        ret = sapi_micro_single_write(ptr, remaining);
-        if (ret < 0) {
-#ifndef PHP_CLI_WIN32_NO_CONSOLE
-            EG(exit_status) = 255;
-            php_handle_aborted_connection();
-#endif
-            break;
-        }
-        ptr += ret;
-        remaining -= ret;
-    }
-
-    return (ptr - str);
-}
 /* }}} */
 
-static void sapi_micro_flush(void *server_context) /* {{{ */
+static char *sapi_micro_read_cookies(void) /* {{{ */
 {
-    /* Ignore EBADF here, it's caused by the fact that STDIN/STDOUT/STDERR streams
-     * are/could be closed before fflush() is called.
-     */
-    if (fflush(stdout) == EOF && errno != EBADF) {
-#ifndef PHP_MICRO_WIN32_NO_CONSOLE
-        php_handle_aborted_connection();
-#endif
-    }
+    return NULL;
 }
 /* }}} */
 
@@ -271,62 +252,35 @@ static void sapi_micro_send_header(sapi_header_struct *sapi_header, void *server
 }
 /* }}} */
 
-static char *sapi_micro_read_cookies(void) /* {{{ */
-{
-    return NULL;
-}
-/* }}} */
+int micro_register_post_startup_cb(void);
 
-static void sapi_micro_log_message(const char *message, int syslog_type_int) /* {{{ */
+static int php_micro_startup(sapi_module_struct *sapi_module) /* {{{ */
 {
-    fprintf(stderr, "%s\n", message);
-#ifdef PHP_WIN32
-    fflush(stderr);
-#endif
-}
-/* }}} */
+    micro_register_post_startup_cb();
 
-/* {{{ sapi_module_struct micro_sapi_module
- */
-static sapi_module_struct micro_sapi_module = {
-#ifdef PHP_MICRO_FAKE_CLI
-    "cli", /* name */
+#if PHP_VERSION_ID >= 80200
+    return php_module_startup(sapi_module, NULL);
 #else
-    "micro", /* name */
+    return php_module_startup(sapi_module, NULL, 0);
 #endif
-    "micro PHP sfx",                   /* pretty name */
-    php_micro_startup,                 /* startup */
-    php_micro_module_shutdown_wrapper, /* shutdown */
-    NULL,                              /* activate */
-    sapi_micro_deactivate,             /* deactivate */
-    sapi_micro_ub_write,               /* unbuffered write */
-    sapi_micro_flush,                  /* flush */
-    NULL,                              /* get uid */
-    NULL,                              /* getenv */
-    php_error,                         /* error handler */
-    sapi_micro_header_handler,         /* header handler */
-    sapi_micro_send_headers,           /* send headers handler */
-    sapi_micro_send_header,            /* send header handler */
-    NULL,                              /* read POST data */
-    sapi_micro_read_cookies,           /* read Cookies */
-    sapi_micro_register_variables,     /* register server variables */
-    sapi_micro_log_message,            /* Log message */
-    NULL,                              /* Get request time */
-    NULL,                              /* Child terminate */
-    STANDARD_SAPI_MODULE_PROPERTIES,
-};
-/* }}} */
+}
 
-/*
- *    sapi_micro_ini_defaults - set overwriteable ini defaults
- */
-static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
-    zval tmp;
-/* overwriteable ini defaults must be set in sapi_micro_ini_defaults() */
+int php_micro_module_shutdown_wrapper(sapi_module_struct *sapi_globals) {
+    php_module_shutdown();
+    return SUCCESS;
+}
+
+/* overwritable ini defaults must be set in sapi_micro_ini_defaults() */
 #define INI_DEFAULT(name, value) \
     ZVAL_NEW_STR(&tmp, zend_string_init(value, sizeof(value) - 1, 1)); \
     zend_hash_str_update(configuration_hash, name, sizeof(name) - 1, &tmp);
-    INI_DEFAULT("report_zend_debug", "0");
+
+/*
+ * sapi_micro_ini_defaults - set overwriteable ini defaults
+ */
+static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
+    zval tmp;
+    // INI_DEFAULT("report_zend_debug", "0");
     INI_DEFAULT("display_errors", "1");
 #undef INI_DEFAULT
 
@@ -336,6 +290,47 @@ static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
         PG(php_binary) = NULL;
     }
 }
+
+/* {{{ sapi_module_struct micro_sapi_module
+ */
+static sapi_module_struct micro_sapi_module = {
+#ifdef PHP_MICRO_FAKE_CLI
+    "cli", /* name */
+#else
+    "micro", /* name */
+#endif
+    "micro PHP sfx", /* pretty name */
+
+    php_micro_startup,                 /* startup */
+    php_micro_module_shutdown_wrapper, /* shutdown */
+
+    NULL,                  /* activate */
+    sapi_micro_deactivate, /* deactivate */
+
+    sapi_micro_ub_write, /* unbuffered write */
+    sapi_micro_flush,    /* flush */
+
+    NULL, /* get uid */
+    NULL, /* getenv */
+
+    php_error, /* error handler */
+
+    sapi_micro_header_handler, /* header handler */
+    sapi_micro_send_headers,   /* send headers handler */
+    sapi_micro_send_header,    /* send header handler */
+
+    NULL,                    /* read POST data */
+    sapi_micro_read_cookies, /* read Cookies */
+
+    sapi_micro_register_variables, /* register server variables */
+    sapi_micro_log_message,        /* Log message */
+
+    NULL, /* Get request time */
+    NULL, /* Child terminate */
+
+    STANDARD_SAPI_MODULE_PROPERTIES,
+};
+/* }}} */
 
 #ifdef _DEBUG
 
@@ -367,6 +362,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
 // clang-format off
+
 static const zend_function_entry additional_functions[] = {
 #ifdef _DEBUG
     // debug functions
@@ -386,6 +382,7 @@ static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_open_self, arginfo_micro_open_self)
     PHP_FE_END
 };
+
 // clang-format on
 
 // static php_stream *s_in_process = NULL;
@@ -505,18 +502,21 @@ int main(int argc, char *argv[])
 
 #if false && defined(PHP_WIN32) && defined(_DEBUG) && defined(PHP_WIN32_DEBUG_HEAP)
     {
-        int tmp_flag;
-        _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
-        _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
-        _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
-        tmp_flag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
-        tmp_flag |= _CRTDBG_DELAY_FREE_MEM_DF;
-        tmp_flag |= _CRTDBG_LEAK_CHECK_DF;
+        char *tmp = getenv("PHP_WIN32_DEBUG_HEAP");
+		if (tmp && ZEND_ATOL(tmp)) {
+            int tmp_flag;
+            _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+            _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
+            _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+            _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR);
+            _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+            _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+            tmp_flag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
+            tmp_flag |= _CRTDBG_DELAY_FREE_MEM_DF;
+            tmp_flag |= _CRTDBG_LEAK_CHECK_DF;
 
-        _CrtSetDbgFlag(tmp_flag);
+            _CrtSetDbgFlag(tmp_flag);
+        }
     }
 #endif
 
@@ -653,7 +653,11 @@ int main(int argc, char *argv[])
             ZEND_STRL("PHP_CLI_PROCESS_TITLE"), is_ps_title_available() == PS_TITLE_SUCCESS, CONST_CS, 0);
 
         // ?
+#if PHP_VERSION_ID >= 80100
         zend_is_auto_global(ZSTR_KNOWN(ZEND_STR_AUTOGLOBAL_SERVER));
+#else
+        zend_is_auto_global_str(ZEND_STRL("_SERVER"));
+#endif
 
         PG(during_request_startup) = 0;
 
