@@ -608,11 +608,16 @@ int main(int argc, char *argv[])
             goto out;
         }
 
+        // use module storage
+        zend_interned_strings_switch_storage(0);
         // hook at here for some extensions that will register proto
+        // TODO: zip
         if (SUCCESS != (exit_status = micro_reregister_proto("phar"))) {
             // if hook failed, go error
             goto out;
         }
+        // switch back
+        zend_interned_strings_switch_storage(1);
 
         FILE *fp = VCWD_FOPEN(self_filename_mb, "rb");
         zend_fseek(fp, sfx_filesize, SEEK_SET);

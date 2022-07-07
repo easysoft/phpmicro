@@ -356,6 +356,10 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
     return ps;
 }
 
+#if PHP_VERSION_ID < 80100
+#    define zend_string_init_existing_interned zend_string_init_interned
+#endif
+
 /*
  *	micro_reregister_proto - hook some:// protocol
  *   should be called after mstartup, before start execution
@@ -367,7 +371,7 @@ int micro_reregister_proto(const char *proto) {
     php_stream_wrapper *modified_wrapper = NULL;
     int ret = SUCCESS;
     HashTable *ht = php_stream_get_url_stream_wrappers_hash_global();
-    php_stream_wrapper *orig_wrapper = zend_hash_find_ptr(ht, zend_string_init_interned(proto, strlen(proto), 1));
+    php_stream_wrapper *orig_wrapper = zend_hash_find_ptr(ht, zend_string_init_existing_interned(proto, strlen(proto), 1));
     if (NULL == orig_wrapper) {
         // no wrapper found
         goto end;
