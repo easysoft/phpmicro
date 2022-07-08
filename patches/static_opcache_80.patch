@@ -15,7 +15,7 @@ index ad3781101b..b7133fc0c8 100644
  
  	for (ext in mod_deps) {
 diff --git a/ext/opcache/ZendAccelerator.c b/ext/opcache/ZendAccelerator.c
-index 6883979e7d..a3aed4820a 100644
+index c195ad7d2c..8bb8dd78fc 100644
 --- a/ext/opcache/ZendAccelerator.c
 +++ b/ext/opcache/ZendAccelerator.c
 @@ -91,7 +91,10 @@ typedef int gid_t;
@@ -29,7 +29,7 @@ index 6883979e7d..a3aed4820a 100644
  
  #ifndef ZTS
  zend_accel_globals accel_globals;
-@@ -4988,7 +4991,11 @@ static int accel_finish_startup(void)
+@@ -4991,7 +4994,11 @@ static int accel_finish_startup(void)
  	return SUCCESS;
  }
  
@@ -82,7 +82,7 @@ index fb921c73da..41de817bda 100644
  	if (PHP_OPCACHE_JIT == "yes") {
  		if (CHECK_HEADER_ADD_INCLUDE("dynasm/dasm_x86.h", "CFLAGS_OPCACHE", PHP_OPCACHE + ";ext\\opcache\\jit")) {
 diff --git a/main/main.c b/main/main.c
-index 073d260ac6..a43c111bc8 100644
+index a40a4c8c37..ae93c8ae6c 100644
 --- a/main/main.c
 +++ b/main/main.c
 @@ -2016,6 +2016,18 @@ void dummy_invalid_parameter_handler(
@@ -108,7 +108,7 @@ index 073d260ac6..a43c111bc8 100644
  	   ahead of all other internals
  	 */
  	php_ini_register_extensions();
-+#ifndef COMPILE_DL_OPCACHE
++#if defined(HAVE_OPCACHE) && !defined(COMPILE_DL_OPCACHE)
 +	zend_load_static_extensions();
 +#endif
  	zend_startup_modules();

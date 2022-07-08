@@ -82,7 +82,7 @@ index 764a2edaab..95427090ce 100644
  	if (PHP_OPCACHE_JIT == "yes") {
  		if (CHECK_HEADER_ADD_INCLUDE("dynasm/dasm_x86.h", "CFLAGS_OPCACHE", PHP_OPCACHE + ";ext\\opcache\\jit")) {
 diff --git a/main/main.c b/main/main.c
-index 8c16f01b11..d4eacd9898 100644
+index 8c16f01b11..0560348a06 100644
 --- a/main/main.c
 +++ b/main/main.c
 @@ -2011,6 +2011,18 @@ void dummy_invalid_parameter_handler(
@@ -108,7 +108,7 @@ index 8c16f01b11..d4eacd9898 100644
  	   ahead of all other internals
  	 */
  	php_ini_register_extensions();
-+#ifndef COMPILE_DL_OPCACHE
++#if defined(HAVE_OPCACHE) && !defined(COMPILE_DL_OPCACHE)
 +	zend_load_static_extensions();
 +#endif
  	zend_startup_modules();
