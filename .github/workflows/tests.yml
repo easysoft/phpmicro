@@ -14,7 +14,7 @@ jobs:
       - name: Fetch version info
         id: fetch
         run: |
-          printf "::set-output name=info::"
+          printf "info=" >> $GITHUB_OUTPUT
           jq -rcs '
           # default targets
           [{
@@ -35,7 +35,7 @@ jobs:
             }[.ver | sub("(?<v>\\d+\\.\\d+)\\..+"; .v)],
           }]' \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.0') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1')
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') >> $GITHUB_OUTPUT
   wintests:
     name: Windows tests for PHP ${{ matrix.name }}
     runs-on: "windows-latest"
@@ -48,19 +48,19 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout PHP
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: php-src/sapi/micro
 
       - name: Checkout php-sdk-binary-tools
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: php/php-sdk-binary-tools
           path: php-sdk-binary-tools
@@ -112,7 +112,7 @@ jobs:
           nmake micro
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: micro_windows_${{ matrix.name }}
           path: php-src/x64/Release/micro.sfx
@@ -135,14 +135,14 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout PHP
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: php-src/sapi/micro
 
@@ -215,7 +215,7 @@ jobs:
           elfedit --output-osabi linux sapi/micro/micro.sfx
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: micro_linux_${{ matrix.name }}
           path: php-src/sapi/micro/micro.sfx
@@ -237,14 +237,14 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout PHP
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: php-src/sapi/micro
 
@@ -315,7 +315,7 @@ jobs:
             EXTRA_CFLAGS='-Os'
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: micro_macos_${{ matrix.name }}
           path: php-src/sapi/micro/micro.sfx
