@@ -20,7 +20,7 @@ jobs:
           [{
             "name": "master",
             "rev":"master",
-            "patch":"82",
+            "patch":"83",
           }] +
           [.[] | {
             # ver is like 8.0.0
@@ -30,12 +30,15 @@ jobs:
             "rev": ("php-"+.ver),
             "patch": {
               # mapping maj.min to patches used
+              "8.3": "83",
+              "8.2": "82",
               "8.1": "81",
               "8.0": "80",
             }[.ver | sub("(?<v>\\d+\\.\\d+)\\..+"; .v)],
           }]' \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.0') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') >> $GITHUB_OUTPUT
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') \
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.2') >> $GITHUB_OUTPUT
   wintests:
     name: Windows tests for PHP ${{ matrix.name }}
     runs-on: "windows-latest"
