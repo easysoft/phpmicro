@@ -1,5 +1,7 @@
 # micro self-executable SAPI for PHP
 
+[Chinese version](Readme.md)
+
 ![php](https://img.shields.io/badge/php-8.0--8.2-royalblue.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![tests](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml/badge.svg)](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml)
@@ -216,3 +218,4 @@ limitations under the License.
 ```
 
 ## remind me to update the English readme and fix typos and strange or offensive expressions
+
