@@ -1,6 +1,6 @@
 # micro 自执行SAPI
 
-[English version](Readme.EN.md)
+[English readme](Readme.EN.md)
 
 ![php](https://img.shields.io/badge/php-8.0--8.2-royalblue.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -16,7 +16,7 @@ micro自执行SAPI提供了php“自执行文件”的可能性
 
 ## 获取与使用
 
-Github actions中构建了一个很少扩展的最小micro，如果需要扩展，请自行构建，参考下方构建说明或使用 [crazywhalecc/static-php-cli](https://github.com/crazywhalecc/static-php-cli) <!-- [自动构建系统（还没做完所以就注释掉了）](https://github.com/dixyes/lwmbs/actions) -->
+Github actions中构建了一个很少扩展的最小micro，如果需要扩展，请自行构建，参考下方构建说明或使用[crazywhalecc/static-php-cli](https://github.com/crazywhalecc/static-php-cli)（swow/swoole/libevent）从[lwmbs的workflow](https://github.com/dixyes/lwmbs/actions)（swow）下一个
 
 将micro.sfx和php文件拼接即可使用
 
@@ -195,7 +195,7 @@ export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 
 ## 一些细节
 
-### ini配置
+### INI配置
 
 见wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings)
 

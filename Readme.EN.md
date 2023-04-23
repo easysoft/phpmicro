@@ -1,6 +1,6 @@
 # micro self-executable SAPI for PHP
 
-[Chinese version](Readme.md)
+[Chinese readme](Readme.md)
 
 ![php](https://img.shields.io/badge/php-8.0--8.2-royalblue.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -16,9 +16,9 @@ Yet only support PHP8+; Windows, Linux, macOS.
 
 ## Fetch and Usage
 
-There's a micro micro.sfx binary contains minimal extensions set builds automatically in Github actions. If you need extensions, build your own micro or use [crazywhalecc/static-php-cli](https://github.com/crazywhalecc/static-php-cli) <!-- [automatic build system (not completed yet)](https://github.com/dixyes/lwmbs/actions) -->
+A micro `micro.sfx` binary containing the minimal extensions set is built automatically in [Github Actions](actions). If you need more extensions, build your own micro or use [crazywhalecc/static-php-cli](https://github.com/crazywhalecc/static-php-cli) (swoole/swow/libevent) or grab one in [lwmbs actions](https://github.com/dixyes/lwmbs/actions)(swow)
 
-Just concatenate micro.sfx and php source to use it.
+To use it, simply concatenate the `micro.sfx` file and any PHP source.
 
 For example: if the content of myawesomeapp.php is
 
@@ -27,9 +27,9 @@ For example: if the content of myawesomeapp.php is
 echo "hello, this is my awesome app." . PHP_EOL;
 ```
 
-at Linux/macOS:
+On Linux/macOS:
 
-Note: If you downloaded micro.sfx and macOS does not let you execute it, try:
+Note for macOS users: If you've downloaded micro.sfx and macOS does not let you execute it, try:
 
 ```bash
 sudo xattr -d com.apple.quarantine /path/to/micro.sfx
@@ -41,7 +41,7 @@ then
 cat /path/to/micro.sfx myawesomeapp.php > myawesomeapp
 chmod 0755 ./myawesomeapp
 ./myawesomeapp
-# show "hello, this is my awesome app."
+# shows "hello, this is my awesome app."
 ```
 
 or Windows:
@@ -49,25 +49,28 @@ or Windows:
 ```batch
 COPY /b \path\to\micro.sfx + myawesomeapp.php myawesomeapp.exe
 myawesomeapp.exe
-REM show "hello, this is my awesome app."
+REM shows "hello, this is my awesome app."
 ```
 
 ## Build micro.sfx
 
 ### Preparation
 
-1.Clone this repo into sapi/micro under PHP source
+1.Clone this repository into `sapi/micro` under the PHP source directory
 
 ```bash
+# prepare PHP source
+git clone --branch 'PHP-choose-a-release' https://github.com/php/php-src/ php-src
+cd php-src
 # at PHP source dir
 git clone <url for this repo> sapi/micro
 ```
 
 2.Apply patches
 
-Patches are located at patches directory, choose patch(es) as you like, see [Readme.md](patches/Readme.md) in patches dir for detail
+Patches are placed in the "patches" directory. Choose patch(es) as you like, see [Readme.md](patches/Readme.md) in the patches dir for detail
 
-Apply patch:
+Apply a patch:
 
 ```bash
 # at PHP source dir
@@ -76,7 +79,7 @@ patch -p1 < sapi/micro/patches/<name of patch>
 
 ### UNIX-like Build
 
-0.Prepare build environment according to official PHP documents.
+0.Prepare the build environment according to [the official PHP documents](https://www.php.net/manual/en/install.unix.php).
 
 1.buildconf
 
@@ -96,10 +99,10 @@ Options for reference:
 
 `--disable-phpdbg --disable-cgi --disable-cli --disable-all --enable-micro --enable-phar --with-ffi --enable-zlib`
 
-At Linux libc compatibility can be a problem, micro provides two kinds of `configure` argument:
+At Linux libc compatibility can be a problem, micro provides two kinds of `configure` arguments:
 
-- `--enable-micro=yes`or`--enable-micro`: this will make PIE shared ELF micro sfx, this kind of binary cannot be invoked cross libc (i.e. you cannot run such a binary which built on alpine with musl on any glibc-based CentOS), but the binary can do ffi and PHP `dl()` function.
-- `--enable-micro=all-static`: this will make static ELF micro sfx, this kind of binary can even run barely on the top of the kernel, but ffi/`dl()` is not supported.
+- `--enable-micro=yes`or`--enable-micro`: this will make PIE shared ELF micro sfx, this kind of binary cannot be invoked cross libc (i.e. you cannot run such a binary which was built on alpine with musl on any glibc-based CentOS), but the binary can do ffi and PHP `dl()` function.
+- `--enable-micro=all-static`: this will make full static ELF micro sfx, this kind of binary can even run barely on top of any linux kernel, but ffi/`dl()` is not supported.
 
 3.make
 
@@ -108,13 +111,13 @@ At Linux libc compatibility can be a problem, micro provides two kinds of `confi
 make micro
 ```
 
-(`make all`(aka. `make`) may work also, but only build micro SAPI -s recommended.
+(`make all`(aka. `make`) may work also, but build only the micro SAPI is recommended.)
 
-That built file is located at sapi/micro/micro.sfx.
+The built file will be located at sapi/micro/micro.sfx.
 
 ### Windows Build
 
-0.Prepare build environment according to official PHP documents.
+0.Prepare the build environment according to [the official PHP documents](https://wiki.php.net/internals/windows/stepbystepbuild_sdk_2).
 
 1.buildconf
 
@@ -135,30 +138,32 @@ Options for reference:
 `--disable-all --disable-zts --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
-Due to PHP build system on Windows lack of ability to statically build PHP binary, you cannot build micro with `nmake`
+Due to PHP build system on Windows lack of the ability to statically build PHP binary, you cannot build micro with `nmake`
 
 ```batch
 # at PHP source dir
 nmake micro
 ```
 
-That built file is located at `<arch name like x64>\\<configuration like Release>\\micro.sfx`.
+That built file is at `<arch name like x64>\\<configuration like Release>\\micro.sfx`.
 
 ## Optimizations
 
-Hugepages optimization for Linux in PHP build system insults huge size of sfx, if you do not take advantage of hugepages, use disable_huge_page.patch to shrink sfx size.
+Hugepages optimization for Linux in the PHP build system results in a huge size of sfx, if you do not take advantage of hugepages, use `disable_huge_page.patch` to shrink the sfx size.
 
-Statically build under Linux needs libc, most common glibc may be large, musl is recommended hence. manually installed musl or some distros provided musl will provide `musl-gcc` or `musl-clang` wrapper, use one of them before configure by specify CC/CXX environ, for example
+Statically build under Linux needs libc, the most common glibc may be large, musl is recommended instead. manually installed musl or some distros provided musl will provide `musl-gcc` or `musl-clang` wrapper, use one of them before configure by specify CC/CXX environs, for example
 
 ```bash
 # ./buildconf things...
 export CC=musl-gcc
 export CXX=musl-gcc
-# ./configure balabala
-# make balabala
+# ./configure things
+# make things
 ```
 
-We hope all dependencies are statically linked into sfx, however, some distro do not provide static version of them, we may manually build them, the case of libffi (ffi extension is not supported in `all-static` builds):
+We hope all dependencies are statically linked into sfx. However, some distro does not provide static versions of them. We may manually build them.
+
+libffi for example (note that the ffi extension is not supported in `all-static` builds):
 
 ```bash
 # fetch sources througe git
@@ -185,19 +190,19 @@ then build micro as
 # ./buildconf things...
 # export CC=musl-xxx things...
 export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
-# ./configure balabala
-# make balabala
+# ./configure things
+# make things
 ```
 
 ## Some details
 
-### ini settings
+### INI settings
 
 See wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings)(TODO: en version)
 
 ### PHP_BINARY constant
 
-In micro, `PHP_BINARY` is an empty string, you can use an ini setting to modify it: `micro.php_binary=somestring`
+In micro, `PHP_BINARY` is an empty string. You can modify it using an ini setting: `micro.php_binary=somestring`
 
 ## OSS License
 
@@ -218,4 +223,3 @@ limitations under the License.
 ```
 
 ## remind me to update the English readme and fix typos and strange or offensive expressions
-
