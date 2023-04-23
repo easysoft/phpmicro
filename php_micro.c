@@ -449,6 +449,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 int main(int argc, char *argv[])
 #endif
 {
+
+# ifdef PHP_MICRO_WIN32_NO_CONSOLE
+	int argc = __argc;
+	char **argv = __argv;
+# endif
+
     int exit_status = 0;
 #ifdef _DEBUG
     const char *_debug_env = getenv("MICRO_DEBUG");
