@@ -8,7 +8,7 @@ MICRO_EXES = "$(BUILD_DIR)\sapi\micro\tests\simpleecho.exe" "$(BUILD_DIR)\sapi\m
 
 _MICRO_RES_BUILD = $(RC) /nologo /n /fo $(BUILD_DIR)\sapi\micro\micro.exe.res \
 	/d WANT_LOGO \
-	/d APP_LOGO="$(APP_LOGO)" \
+	/d APP_LOGO="\"$(APP_LOGO)\"" \
 	/d FILE_DESCRIPTION="\"micro.exe\"" \
 	/d FILE_NAME="\"micro.exe\"" \
 	/d PRODUCT_NAME="\"PHP Script Interpreter\"" \
