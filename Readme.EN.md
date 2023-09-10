@@ -1,7 +1,6 @@
 # micro self-executable SAPI for PHP
 
-[Chinese readme](Readme.md)
-
+[![Chinese readme](https://img.shields.io/badge/README-%E4%B8%AD%E6%96%87%20%F0%9F%87%A8%F0%9F%87%B3-white)](Readme.md)
 ![php](https://img.shields.io/badge/php-8.0--8.2-royalblue.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![tests](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml/badge.svg)](https://github.com/dixyes/phpmicro/actions/workflows/tests.yml)
