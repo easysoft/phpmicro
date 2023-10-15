@@ -30,7 +30,7 @@ limitations under the License.
 #    define SFX_FILESIZE 0L
 #elif defined(__linux)
 #    include <sys/auxv.h>
-#elif defined(___FreeBSD__)
+#elif defined(__FreeBSD__)
 #    include <sys/auxv.h>
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
