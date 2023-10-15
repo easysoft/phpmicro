@@ -30,6 +30,8 @@ limitations under the License.
 #    define SFX_FILESIZE 0L
 #elif defined(__linux)
 #    include <sys/auxv.h>
+#elif defined(___FreeBSD__)
+#    include <sys/auxv.h>
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
 #else
@@ -280,6 +282,15 @@ const char *micro_get_filename(void) {
 }
 
 #elif defined(__linux)
+const char *micro_get_filename(void) {
+    static char *self_filename = NULL;
+    if (NULL == self_filename) {
+        self_filename = malloc(PATH_MAX);
+        (void)realpath((const char *)getauxval(AT_EXECFN), self_filename);
+    }
+    return self_filename;
+}
+#elif defined(__FreeBSD__)
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
