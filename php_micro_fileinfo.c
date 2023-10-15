@@ -305,6 +305,11 @@ const char *micro_get_filename(void) {
 		}
     }
     return self_filename;
+error:
+    if (NULL != self_filename) {
+        self_filename[0] = '\0';
+    }
+    return NULL;
 }
 #elif defined(__APPLE__)
 const char *micro_get_filename(void) {
