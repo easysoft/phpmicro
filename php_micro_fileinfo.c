@@ -294,8 +294,15 @@ const char *micro_get_filename(void) {
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
+        int success = 0;
         self_filename = malloc(PATH_MAX);
-        (void)realpath((const char *)getauxval(AT_EXECFN), self_filename);
+        success = elf_aux_info(AT_EXECPATH, self_filename, PATH_MAX);
+        if (success != 0) {
+        	goto error;
+		}
+		if (NULL == self_filename) {
+			goto error;
+		}
     }
     return self_filename;
 }
