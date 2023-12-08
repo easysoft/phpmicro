@@ -361,6 +361,11 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
+#ifdef PHP_WIN32
+ZEND_BEGIN_ARG_INFO(arginfo_realloc_console, 0)
+ZEND_END_ARG_INFO()
+#endif // PHP_WIN32
+
 // clang-format off
 
 static const zend_function_entry additional_functions[] = {
@@ -380,6 +385,9 @@ static const zend_function_entry additional_functions[] = {
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
     PHP_FE(micro_version, arginfo_micro_version)
     PHP_FE(micro_open_self, arginfo_micro_open_self)
+#ifdef PHP_WIN32
+    PHP_FE(realloc_console, arginfo_realloc_console)
+#endif // PHP_WIN32
     PHP_FE_END
 };
 

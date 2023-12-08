@@ -182,3 +182,20 @@ PHP_FUNCTION(micro_open_self) {
     }
     php_stream_to_zval(stream, return_value);
 }
+
+#ifdef PHP_WIN32
+
+// for windows "win32" build to reallocate console
+PHP_FUNCTION(realloc_console) {
+    if (AllocConsole()) {
+        _close(0);
+        _close(1);
+        _close(2);
+        freopen("CONIN$", "r", stdin);
+        freopen("CONOUT$", "w", __acrt_iob_func(1));
+        freopen("CONOUT$", "w", __acrt_iob_func(2));
+    }
+    RETURN_NULL();
+}
+
+# endif // PHP_WIN32
