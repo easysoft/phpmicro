@@ -25,7 +25,7 @@ here's original copyright notice
    | This source file is subject to version 3.01 of the PHP license,      |
    | that is bundled with this package in the file LICENSE, and is        |
    | available through the world-wide-web at the following url:           |
-   | http://www.php.net/license/3_01.txt                                  |
+   | https://www.php.net/license/3_01.txt                                 |
    | If you did not receive a copy of the PHP license and are unable to   |
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
@@ -110,7 +110,7 @@ static ssize_t sapi_micro_single_write(const char *str, size_t str_length) /* {{
 #ifdef PHP_WRITE_STDOUT
     do {
         ret = write(STDOUT_FILENO, str, str_length);
-    } while (ret <= 0 && errno == EAGAIN && sapi_micro_select(STDOUT_FILENO));
+    } while (ret <= 0 && (errno == EINTR || (errno == EAGAIN && sapi_micro_select(STDOUT_FILENO))));
 #else
     ret = fwrite(str, 1, MIN(str_length, 16384), stdout);
     if (ret == 0 && ferror(stdout)) {
@@ -405,16 +405,25 @@ static void micro_register_file_handles(void) /* {{{ */
     s_out = php_stream_open_wrapper_ex("php://stdout", "wb", 0, NULL, sc_out);
     s_err = php_stream_open_wrapper_ex("php://stderr", "wb", 0, NULL, sc_err);
 
-    /* Release stream resources, but don't free the underlying handles. Othewrise,
+    /* Release stream resources, but don't free the underlying handles. Otherwise,
      * extensions which write to stderr or company during mshutdown/gshutdown
      * won't have the expected functionality.
      */
+#if PHP_VERSION_ID >= 80200
+    if (s_in)
+        s_in->flags |= PHP_STREAM_FLAG_NO_RSCR_DTOR_CLOSE;
+    if (s_out)
+        s_out->flags |= PHP_STREAM_FLAG_NO_RSCR_DTOR_CLOSE;
+    if (s_err)
+        s_err->flags |= PHP_STREAM_FLAG_NO_RSCR_DTOR_CLOSE;
+#else
     if (s_in)
         s_in->flags |= PHP_STREAM_FLAG_NO_CLOSE;
     if (s_out)
         s_out->flags |= PHP_STREAM_FLAG_NO_CLOSE;
     if (s_err)
         s_err->flags |= PHP_STREAM_FLAG_NO_CLOSE;
+#endif // PHP_VERSION_ID >= 80200
 
     if (s_in == NULL || s_out == NULL || s_err == NULL) {
         if (s_in)
@@ -426,21 +435,34 @@ static void micro_register_file_handles(void) /* {{{ */
         return;
     }
 
+    // not used
     // s_in_process = s_in;
 
     php_stream_to_zval(s_in, &ic.value);
     php_stream_to_zval(s_out, &oc.value);
     php_stream_to_zval(s_err, &ec.value);
 
+#if PHP_VERSION_ID >= 80300
+    Z_CONSTANT_FLAGS(ic.value) = 0;
+#else
     ZEND_CONSTANT_SET_FLAGS(&ic, CONST_CS, 0);
+#endif //PHP_VERSION_ID >= 80300
     ic.name = zend_string_init_interned("STDIN", sizeof("STDIN") - 1, 0);
     zend_register_constant(&ic);
 
+#if PHP_VERSION_ID >= 80300
+    Z_CONSTANT_FLAGS(oc.value) = 0;
+#else
     ZEND_CONSTANT_SET_FLAGS(&oc, CONST_CS, 0);
+#endif //PHP_VERSION_ID >= 80300
     oc.name = zend_string_init_interned("STDOUT", sizeof("STDOUT") - 1, 0);
     zend_register_constant(&oc);
 
+#if PHP_VERSION_ID >= 80300
+    Z_CONSTANT_FLAGS(ec.value) = 0;
+#else
     ZEND_CONSTANT_SET_FLAGS(&ec, CONST_CS, 0);
+#endif //PHP_VERSION_ID >= 80300
     ec.name = zend_string_init_interned("STDERR", sizeof("STDERR") - 1, 0);
     zend_register_constant(&ec);
 }
