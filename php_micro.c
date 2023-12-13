@@ -362,7 +362,8 @@ ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
 #ifdef PHP_WIN32
-ZEND_BEGIN_ARG_INFO(arginfo_realloc_console, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_realloc_console, 0, 0, _IS_BOOL, 0)
+    ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, alloc, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 #endif // PHP_WIN32
 

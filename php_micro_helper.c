@@ -187,7 +187,21 @@ PHP_FUNCTION(micro_open_self) {
 
 // for windows "win32" build to reallocate console
 PHP_FUNCTION(realloc_console) {
-    if (AllocConsole()) {
+    BOOL ret = 0;
+    zend_bool alloc = false;
+
+    ZEND_PARSE_PARAMETERS_START(0, 1)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(alloc)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (alloc) {
+        ret = AllocConsole();
+    } else {
+        ret = AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+
+    if (ret) {
         _close(0);
         _close(1);
         _close(2);
@@ -195,7 +209,8 @@ PHP_FUNCTION(realloc_console) {
         freopen("CONOUT$", "w", __acrt_iob_func(1));
         freopen("CONOUT$", "w", __acrt_iob_func(2));
     }
-    RETURN_NULL();
+
+    RETURN_BOOL(ret);
 }
 
 # endif // PHP_WIN32
