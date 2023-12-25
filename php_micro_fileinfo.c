@@ -303,6 +303,17 @@ const char *micro_get_filename(void) {
         if (0 != _NSGetExecutablePath(self_path, &len)) {
             goto error;
         }
+
+        // realpath it
+        char *real_path = malloc(PATH_MAX);
+        if (NULL == real_path) {
+            goto error;
+        }
+        if (NULL == realpath(self_path, real_path)) {
+            goto error;
+        }
+        free(self_path);
+        self_path = real_path;
     }
     return self_path;
 error:
