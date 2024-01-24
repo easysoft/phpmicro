@@ -12,6 +12,7 @@ disable_huge_page.patch | Linux | 可选 Optional | 禁用linux构建的max-page
 vcruntime140_\<php version\>.patch | Windows | 必须 Nessesary | 禁用sfx启动时GetModuleHandle(vcruntime140(d).dll) Disable GetModuleHandle(vcruntime140(d).dll) at sfx start
 win32_\<php version\>.patch | Windows | 必须 Nessesary | 修改构建系统以静态构建 Modify build system for build sfx file
 zend_stream.patch | Windows | 必须 Nessesary | 修改构建系统以静态构建 Modify build system for build sfx file
+comctl32.patch | Windows | 可选 Optional | 添加comctl32.dll manifest以启用[visual style](https://learn.microsoft.com/en-us/windows/win32/controls/visual-styles-overview) (会让窗口控件好看一些) Add manifest dependency for comctl32 to enable [visual style](https://learn.microsoft.com/en-us/windows/win32/controls/visual-styles-overview) (makes window control looks modern)
 
 ## Something special
 
