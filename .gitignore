@@ -4,6 +4,7 @@
 *.la
 *.obj
 *.sfx
+*.sfx.dwarf
 *.dep
 *.debug
 .libs
