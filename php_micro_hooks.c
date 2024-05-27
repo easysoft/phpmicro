@@ -122,7 +122,7 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
             // self should not be writeable
             return PHP_STREAM_OPTION_RETURN_ERR;
         }
-        range->offset = range->offset + micro_get_sfx_filesize();
+        range->offset = range->offset + micro_get_sfxsize();
     }
     orig_ops(myops, stream);
     int ret = stream->ops->set_option(stream, option, value, myptrparam);
@@ -135,13 +135,13 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
  */
 static int micro_plain_files_seek_with_offset(
     php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset) {
-    dbgprintf("seeking %zd with offset %d whence %d\n", offset, micro_get_sfx_filesize(), whence);
+    dbgprintf("seeking %zd with offset %d whence %d\n", offset, micro_get_sfxsize(), whence);
     int ret = -1;
     zend_off_t realoffset;
 
     orig_ops(myops, stream);
     if (SEEK_SET == whence) {
-        ret = stream->ops->seek(stream, offset + micro_get_sfx_filesize(), whence, &realoffset);
+        ret = stream->ops->seek(stream, offset + micro_get_sfxsize(), whence, &realoffset);
     } else {
         ret = stream->ops->seek(stream, offset, whence, &realoffset);
     }
@@ -149,11 +149,11 @@ static int micro_plain_files_seek_with_offset(
     if (-1 == ret) {
         return -1;
     }
-    if (realoffset < micro_get_sfx_filesize()) {
+    if (realoffset < micro_get_sfxsize()) {
         php_error_docref(NULL, E_WARNING, "Seek on self stream failed");
         return -1;
     }
-    *newoffset = realoffset - micro_get_sfx_filesize();
+    *newoffset = realoffset - micro_get_sfxsize();
     return ret;
 }
 
@@ -169,8 +169,8 @@ static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_sta
     if (-1 == ret) {
         return -1;
     }
-    dbgprintf("stating withoffset %zd -> %zd\n", ssb->sb.st_size, ssb->sb.st_size - micro_get_sfx_filesize());
-    ssb->sb.st_size -= micro_get_sfx_filesize();
+    dbgprintf("stating withoffset %zd -> %zd\n", ssb->sb.st_size, ssb->sb.st_size - micro_get_sfxsize());
+    ssb->sb.st_size -= micro_get_sfxsize();
     return ret;
 }
 
@@ -282,7 +282,7 @@ static int micro_plain_files_url_stater(
     const char *filename_slashed = micro_slashize(url);
     if (0 == strcmp(filename_slashed, self_filename_slashed)) {
         dbgprintf("stating self via plain file wops, hook it\n");
-        ssb->sb.st_size -= micro_get_sfx_filesize();
+        ssb->sb.st_size -= micro_get_sfxsize();
     }
     free((void *)filename_slashed);
     return ret;
@@ -479,7 +479,7 @@ static inline int initial_seek(php_stream *ps) {
         // appending mode
         // this will only called after micro_fileinfo_init,
         //  so it's sure thatself size wont be smaller then sfx size.
-        ps->position -= micro_get_sfx_filesize();
+        ps->position -= micro_get_sfxsize();
         ps->ops->seek(ps, ps->position, SEEK_SET, &dummy);
     } else {
         // self should be seekable, if not, why?

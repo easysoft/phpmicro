@@ -32,10 +32,10 @@ _MICRO_MT = if $(MT) neq "" if exist $(BUILD_DIR)\micro.exe.manifest $(MT) -nolo
 # for 2-step generation
 $(MICRO_SFX): generated_files $(MICRO_LINKING_OBJS) $(BUILD_DIR)\micro.exe.manifest
 	@echo Prebuilding
-	$(_MICRO_RES_BUILD) /d SFX_FILESIZE=0xcafebabeL sapi\micro\php_micro.rc
+	$(_MICRO_RES_BUILD) /d SFXSIZE=0xcafebabeL sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
-	@for %I in ($(MICRO_SFX)) do $(_MICRO_RES_BUILD) /d SFX_FILESIZE="%~zI"L sapi\micro\php_micro.rc
+	@for %I in ($(MICRO_SFX)) do $(_MICRO_RES_BUILD) /d SFXSIZE="%~zI"L sapi\micro\php_micro.rc
 	@$(_MICRO_LINKALL)
 	@$(_MICRO_MT)
 

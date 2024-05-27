@@ -352,6 +352,9 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_sfx_filesize, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_micro_get_sfxsize, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_self_filename, 0)
 ZEND_END_ARG_INFO()
 
@@ -383,6 +386,7 @@ static const zend_function_entry additional_functions[] = {
     PHP_FE(cli_get_process_title, arginfo_cli_get_process_title)
     // micro sapi functions
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
+    PHP_FE(micro_get_sfxsize, arginfo_micro_get_sfxsize)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
     PHP_FE(micro_version, arginfo_micro_version)
     PHP_FE(micro_open_self, arginfo_micro_open_self)
@@ -499,8 +503,8 @@ int main(int argc, char *argv[])
     if (0 != (exit_status = micro_fileinfo_init())) {
         return exit_status;
     }
-    const int sfx_filesize = micro_get_sfx_filesize();
-    dbgprintf("myfinalsize is %d\n", sfx_filesize);
+    const int sfxsize = micro_get_sfxsize();
+    dbgprintf("myfinalsize is %d\n", sfxsize);
     zend_file_handle file_handle;
     const char *self_filename_mb = micro_get_filename();
     php_self = (char *)micro_get_filename();
@@ -657,7 +661,7 @@ int main(int argc, char *argv[])
         zend_interned_strings_switch_storage(1);
 
         FILE *fp = VCWD_FOPEN(self_filename_mb, "rb");
-        zend_fseek(fp, sfx_filesize, SEEK_SET);
+        zend_fseek(fp, sfxsize, SEEK_SET);
 
         dbgprintf("fin opening self\n");
         if (!fp) {

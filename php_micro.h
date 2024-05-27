@@ -35,7 +35,7 @@ limitations under the License.
         STRINGIZE(PHP_MICRO_VER_MAJ) "." STRINGIZE(PHP_MICRO_VER_MIN) "." STRINGIZE(PHP_MICRO_VER_PAT)
 #endif
 
-#define PHP_MICRO_SFX_FILESIZE_ID 12345
+#define PHP_MICRO_SFXSIZE_ID 12345
 #ifdef PHP_WIN32
 #    define PHP_MICRO_HINT_CMDC "copy /b %s + mycode.php mycode.exe"
 #    define PHP_MICRO_HINT_CMDE "mycode.exe myarg1 myarg2"

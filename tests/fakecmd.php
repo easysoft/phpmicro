@@ -209,7 +209,7 @@ function writesfx($out)
 {
     $sfx = micro_open_self();
     // write sfx header
-    $size = micro_get_sfx_filesize();
+    $size = micro_get_sfxsize();
     for (; $size > 0; $size -= BUFSIZE) {
         fwrite($out, fread($sfx, $size > BUFSIZE ? BUFSIZE : $size));
     }

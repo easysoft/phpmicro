@@ -25,7 +25,7 @@ limitations under the License.
 
 #include "php.h"
 
-uint32_t micro_get_sfx_filesize(void);
+uint32_t micro_get_sfxsize(void);
 
 #ifdef PHP_WIN32
 /*
@@ -66,22 +66,31 @@ int is_stream_self(php_stream *stream);
  *   micro_php_stream_rewind - rewind a stream with offset
  */
 #    define micro_php_stream_rewind(stream) \
-        (is_stream_self(stream) ? _php_stream_seek(stream, micro_get_sfx_filesize(), SEEK_SET) \
+        (is_stream_self(stream) ? _php_stream_seek(stream, micro_get_sfxsize(), SEEK_SET) \
                                 : _php_stream_seek(stream, 0, SEEK_SET))
 /*
  *   micro_php_stream_seek - seek a stream with offset
  */
 #    define micro_php_stream_seek(stream, offset, whence) \
         (is_stream_self(stream) && SEEK_SET == whence ? dbgprintf("seeking with offset\n"), \
-            _php_stream_seek(stream, offset + micro_get_sfx_filesize(), SEEK_SET) \
+            _php_stream_seek(stream, offset + micro_get_sfxsize(), SEEK_SET) \
                                                       : _php_stream_seek(stream, 0, SEEK_SET))
 #endif
 /*
  *   zif_micro_get_sfx_filesize
  *	micro_get_sfx_filesize() -> int
- * 	get sfx filesize in bytes
+ * 	get sfx size in bytes
+ *     deprecated
  */
 PHPAPI PHP_FUNCTION(micro_get_sfx_filesize);
+
+/*
+ *   zif_micro_get_sfxsize
+ *	micro_get_sfxsize() -> int
+ * 	get sfx size in bytes
+ */
+PHPAPI PHP_FUNCTION(micro_get_sfxsize);
+
 /*
  *   zif_micro_get_self_filename
  *	micro_get_self_filename() -> string

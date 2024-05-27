@@ -27,11 +27,11 @@ limitations under the License.
 #if defined(PHP_WIN32)
 #    include "win32/codepage.h"
 #    include <windows.h>
-#    define SFX_FILESIZE 0L
 #elif defined(__linux)
 #    include <sys/auxv.h>
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
+#    include <mach-o/getsect.h>
 #else
 #    error because we donot support that platform yet
 #endif
@@ -47,10 +47,10 @@ limitations under the License.
 const char *micro_get_filename(void);
 
 // do we need uint64_t for sfx size?
-static uint32_t _final_sfx_filesize = 0;
-uint32_t _micro_get_sfx_filesize(void);
-uint32_t micro_get_sfx_filesize(void) {
-    return _final_sfx_filesize;
+static uint32_t _final_sfxsize = 0;
+uint32_t _micro_get_sfxsize(void);
+uint32_t micro_get_sfxsize(void) {
+    return _final_sfxsize;
 }
 
 typedef struct _ext_ini_header_t {
@@ -75,7 +75,10 @@ const wchar_t *micro_get_filename_w();
 int micro_fileinfo_init(void) {
     int ret = 0;
     uint32_t len = 0;
-    uint32_t sfx_filesize = _micro_get_sfx_filesize();
+    uint32_t sfxsize = _micro_get_sfxsize();
+    if (0 == sfxsize) {
+        return FAILURE;
+    }
 #ifdef PHP_WIN32
     LPCWSTR self_path = micro_get_filename_w();
     HANDLE handle = CreateFileW(self_path,
@@ -90,8 +93,8 @@ int micro_fileinfo_init(void) {
         goto end;
     }
     DWORD filesize = GetFileSize(handle, NULL);
-    dbgprintf("%d, %d\n", sfx_filesize, filesize);
-    if (filesize <= sfx_filesize) {
+    dbgprintf("%d, %d\n", sfxsize, filesize);
+    if (filesize <= sfxsize) {
         fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
         goto end;
@@ -122,7 +125,8 @@ int micro_fileinfo_init(void) {
         goto end;
     }
     size_t filesize = stats.st_size;
-    if (filesize <= sfx_filesize) {
+    dbgprintf("%d, %d\n", sfxsize, filesize);
+    if (filesize <= sfxsize) {
         fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
         goto end;
@@ -139,12 +143,12 @@ int micro_fileinfo_init(void) {
         } while (0)
 #endif // PHP_WIN32
     ext_ini_header_t ext_ini_header = {0};
-    if (filesize <= sfx_filesize + sizeof(ext_ini_header)) {
+    if (filesize <= sfxsize + sizeof(ext_ini_header)) {
         ret = FAILURE;
         goto end;
     }
     // we may have extra ini configs.
-    seekfile(sfx_filesize);
+    seekfile(sfxsize);
     uint32_t red = 0;
     readfile(&ext_ini_header, sizeof(ext_ini_header), red);
     if (sizeof(ext_ini_header) != red) {
@@ -162,7 +166,7 @@ int micro_fileinfo_init(void) {
     len = (ext_ini_header.len[0] << 24) + (ext_ini_header.len[1] << 16) + (ext_ini_header.len[2] << 8) +
         ext_ini_header.len[3];
     dbgprintf("len is %d\n", len);
-    if (filesize <= sfx_filesize + sizeof(ext_ini_header) + len) {
+    if (filesize <= sfxsize + sizeof(ext_ini_header) + len) {
         // bad len, not an extra ini
         ret = SUCCESS;
         len = 0;
@@ -186,7 +190,7 @@ int micro_fileinfo_init(void) {
     len += sizeof(ext_ini_header_t);
 
 end:
-    _final_sfx_filesize = sfx_filesize + len;
+    _final_sfxsize = sfxsize + len;
     closefile();
     return ret;
 #undef seekfile
@@ -195,24 +199,40 @@ end:
 }
 
 /*
- *   _micro_get_sfx_filesize - get (real) sfx size using resource(win) / 2 stage build constant (others)
+ *   _micro_get_sfxsize - get (real) sfx size using
+ *   Win32 resource (win) / __TEXT,__info_plist (Mach-O) / .microinf (ELF)
  */
-uint32_t _micro_get_sfx_filesize(void) {
-    static uint32_t _sfx_filesize = SFX_FILESIZE;
-#ifdef PHP_WIN32
-    dbgprintf("_sfx_filesize: %d, %p\n", _sfx_filesize, &_sfx_filesize);
-    dbgprintf("resource: %p\n", FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFX_FILESIZE_ID), RT_RCDATA));
-    dbgprintf("err: %8x\n", GetLastError());
-    if (SFX_FILESIZE == _sfx_filesize) {
-        memcpy((void *)&_sfx_filesize,
-            LockResource(
-                LoadResource(NULL, FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFX_FILESIZE_ID), RT_RCDATA))),
-            sizeof(uint32_t));
+uint32_t _micro_get_sfxsize(void) {
+    static uint32_t _sfxsize = 0;
+    if (0 != _sfxsize) {
+        return _sfxsize;
     }
-    return _sfx_filesize;
-#else
-    return _sfx_filesize;
+#if defined(PHP_WIN32)
+    HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFXSIZE_ID), RT_RCDATA);
+    dbgprintf("resource: %p\n", resource);
+    if (NULL == resource) {
+        dbgprintf("GetLastError: %d\n", GetLastError());
+        fprintf(stderr, "no sfx resource found (corrupt micro sfx).\n");
+        return 0;
+    }
+    memcpy((void *)&_sfxsize, LockResource(LoadResource(NULL, HRSRC)), sizeof(uint32_t));
+#elif defined(__APPLE__)
+    void *header = (void *)_dyld_get_image_header(0);
+    unsigned long size = 0;
+    const char *section = (const char*)getsectiondata(header, "__DATA", "__micro_sfxsize", &size);
+    if (NULL == section) {
+        fprintf(stderr, "no __DATA,__micro_sfxsize section found (corrupt micro sfx).\n");
+        return 0;
+    }
+    if (sizeof(uint32_t) > size) {
+        fprintf(stderr, "bad __DATA,__micro_sfxsize section found (corrupt micro sfx).\n");
+        return 0;
+    }
+    memcpy((void *)&_sfxsize, section, sizeof(uint32_t));
+#elif defined(__linux)
+#error todo
 #endif
+    return _sfxsize;
 }
 
 #ifdef PHP_WIN32
@@ -366,5 +386,10 @@ PHP_FUNCTION(micro_get_self_filename) {
 }
 
 PHP_FUNCTION(micro_get_sfx_filesize) {
-    RETURN_LONG(micro_get_sfx_filesize());
+    zend_error(E_DEPRECATED, "micro_get_sfx_filesize is deprecated, use micro_get_sfxsize instead");
+    RETURN_LONG(micro_get_sfxsize());
+}
+
+PHP_FUNCTION(micro_get_sfxsize) {
+    RETURN_LONG(micro_get_sfxsize());
 }

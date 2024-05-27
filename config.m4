@@ -71,12 +71,10 @@ dnl prepare stat command
   if test "x${enable_debug##yes}" != "x${enable_debug}"; then
     MICRO_CFLAGS=-D_DEBUG
   fi
-  PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c php_micro_hooks.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), '$(SAPI_MICRO_PATH)')
+  PHP_SELECT_SAPI(micro, program, php_micro.c php_micro_helper.c php_micro_hooks.c php_micro_fileinfo.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), '$(SAPI_MICRO_PATH)')
   dnl add cli_???_process_title functions
   PHP_ADD_SOURCES_X(sapi/cli, php_cli_process_title.c ps_title.c, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1, PHP_MICRO_OBJS)
-  dnl add 2-stage build object
   PHP_SUBST(MICRO_2STAGE_OBJS)
-  PHP_ADD_SOURCES_X(sapi/micro, php_micro_fileinfo.c, -DSFX_FILESIZE=\$(SFX_FILESIZE) -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 \$(MICRO_CFLAGS), MICRO_2STAGE_OBJS)
 
   OVERALL_TARGET="$OVERALL_TARGETS \$(SAPI_MICRO_PATH) \$(MICRO_EXES)"  
 
@@ -95,7 +93,10 @@ dnl prepare stat command
     if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then
       AC_MSG_WARN(macOS donot support static mach-o build)
     fi
-    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(MICRO_2STAGE_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    PHP_SUBST(MICRO_LDFLAGS)
+    MICRO_2STAGE_OBJS=sapi/micro/micro_sfxsize_section.bin
+    MICRO_LDFLAGS="-Wl,-sectcreate,__DATA,__micro_sfxsize,sapi/micro/micro_sfxsize_section.bin"
+    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(MICRO_LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     MICRO_STRIP_FLAGS=""
     ;;
   *)
@@ -110,6 +111,7 @@ dnl prepare stat command
       MICRO_LIBS='$(EXTRA_LIBS:-lresolv=-Wl,-Bstatic,-lresolv,-Bdynamic)'
     fi
     PHP_SUBST(EXTRA_LDFLAGS)
+    MICRO_2STAGE_OBJS=sapi/micro/micro_sfxsize_section_elf.o
     BUILD_MICRO="\$(LIBTOOL) --mode=link \$(CC) -export-dynamic \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(PHP_RPATHS) \$(PHP_GLOBAL_OBJS) \$(PHP_BINARY_OBJS) \$(PHP_MICRO_OBJS) \$(MICRO_2STAGE_OBJS) ${MICRO_LIBS} \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     MICRO_STRIP_FLAGS="-s"
     ;;
