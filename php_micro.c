@@ -364,13 +364,13 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
+// clang-format off
+
 #ifdef PHP_WIN32
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_realloc_console, 0, 0, _IS_BOOL, 0)
     ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, alloc, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 #endif // PHP_WIN32
-
-// clang-format off
 
 static const zend_function_entry additional_functions[] = {
 #ifdef _DEBUG
@@ -451,7 +451,7 @@ static void micro_register_file_handles(void) /* {{{ */
     Z_CONSTANT_FLAGS(ic.value) = 0;
 #else
     ZEND_CONSTANT_SET_FLAGS(&ic, CONST_CS, 0);
-#endif //PHP_VERSION_ID >= 80300
+#endif // PHP_VERSION_ID >= 80300
     ic.name = zend_string_init_interned("STDIN", sizeof("STDIN") - 1, 0);
     zend_register_constant(&ic);
 
@@ -459,7 +459,7 @@ static void micro_register_file_handles(void) /* {{{ */
     Z_CONSTANT_FLAGS(oc.value) = 0;
 #else
     ZEND_CONSTANT_SET_FLAGS(&oc, CONST_CS, 0);
-#endif //PHP_VERSION_ID >= 80300
+#endif // PHP_VERSION_ID >= 80300
     oc.name = zend_string_init_interned("STDOUT", sizeof("STDOUT") - 1, 0);
     zend_register_constant(&oc);
 
@@ -467,7 +467,7 @@ static void micro_register_file_handles(void) /* {{{ */
     Z_CONSTANT_FLAGS(ec.value) = 0;
 #else
     ZEND_CONSTANT_SET_FLAGS(&ec, CONST_CS, 0);
-#endif //PHP_VERSION_ID >= 80300
+#endif // PHP_VERSION_ID >= 80300
     ec.name = zend_string_init_interned("STDERR", sizeof("STDERR") - 1, 0);
     zend_register_constant(&ec);
 }
@@ -485,10 +485,10 @@ int main(int argc, char *argv[])
 #endif
 {
 
-# ifdef PHP_MICRO_WIN32_NO_CONSOLE
-	int argc = __argc;
-	char **argv = __argv;
-# endif
+#ifdef PHP_MICRO_WIN32_NO_CONSOLE
+    int argc = __argc;
+    char **argv = __argv;
+#endif
 
     int exit_status = 0;
 #ifdef _DEBUG

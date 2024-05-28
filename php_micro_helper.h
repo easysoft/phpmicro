@@ -72,6 +72,6 @@ PHP_FUNCTION(micro_open_self);
  *   re-allocate console after console free'd, we can only do this in C because stdio is static varible in MT CRT
  */
 PHP_FUNCTION(realloc_console);
-# endif // PHP_WIN32
+#endif // PHP_WIN32
 
 #endif

@@ -140,7 +140,9 @@ MICRO_SFX_EXPORT void inspect(void *buf, int len) {
     uint8_t *pbuf = buf;
     for (uint32_t i = 0; i < len; i += 8) {
         printf("%04x:", i);
-        for (uint8_t j = 0; i + j < len && j < 8; j++) { printf(" %02x", pbuf[i + j]); }
+        for (uint8_t j = 0; i + j < len && j < 8; j++) {
+            printf(" %02x", pbuf[i + j]);
+        }
         printf("    ");
         for (uint8_t j = 0; i + j < len && j < 8; j++) {
             if (' ' <= pbuf[i + j] && pbuf[i + j] < 127) {
@@ -213,4 +215,4 @@ PHP_FUNCTION(realloc_console) {
     RETURN_BOOL(ret);
 }
 
-# endif // PHP_WIN32
+#endif // PHP_WIN32

@@ -48,12 +48,12 @@ typedef Elf32_Phdr Elf_Phdr;
 #    if defined(__LP64__)
 typedef struct mach_header_64 mach_header;
 typedef struct segment_command_64 segment_command;
-#define MACH_HEADER_MAGIC MH_MAGIC_64
-#define LOADCOMMAND_SEGMENT LC_SEGMENT_64
+#        define MACH_HEADER_MAGIC   MH_MAGIC_64
+#        define LOADCOMMAND_SEGMENT LC_SEGMENT_64
 #    else
 typedef struct mach_header mach_header;
 typedef struct segment_command segment_command;
-#define LOADCOMMAND_SEGMENT LC_SEGMENT
+#        define LOADCOMMAND_SEGMENT LC_SEGMENT
 #    endif
 #else
 #    error because we donot support that platform yet
