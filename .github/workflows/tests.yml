@@ -20,7 +20,7 @@ jobs:
           [{
             "name": "master",
             "rev":"master",
-            "patch":"83",
+            "patch":"84",
           }] +
           [.[] | {
             # ver is like 8.0.0
@@ -30,6 +30,7 @@ jobs:
             "rev": ("php-"+.ver),
             "patch": {
               # mapping maj.min to patches used
+              "8.4": "84",
               "8.3": "83",
               "8.2": "82",
               "8.1": "81",
@@ -38,7 +39,8 @@ jobs:
           }]' \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.0') \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.2') >> $GITHUB_OUTPUT
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.2') \
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.3') >> $GITHUB_OUTPUT
   wintests:
     name: Windows tests for PHP ${{ matrix.name }}
     runs-on: "windows-latest"
@@ -74,7 +76,7 @@ jobs:
         working-directory: php-src
         run: |
           $patchVer = "${{ matrix.patch }}"
-          $series = '83', '82', '81', '80'
+          $series = '84', '83', '82', '81', '80'
           $patches = 'cli_checks', 'vcruntime140', 'win32', 'zend_stream'
           foreach ( $patch in $patches )
           {
@@ -163,7 +165,7 @@ jobs:
               patch -p1 < $path
               continue
             fi
-            for ver in '83' '82' '81' '80'
+            for ver in '84' '83' '82' '81' '80'
             do
               if [ $patchVer -lt $ver ]
               then
@@ -230,7 +232,10 @@ jobs:
           make micro_test TESTS="--color sapi/micro/tests"
   macostests:
     name: macOS tests for PHP ${{ matrix.name }}
-    runs-on: "macos-latest"
+    #runs-on: "macos-latest"
+    # macos-14-arm64 now cannot build php without install many things
+    # we cannot select macos-14 because macos-14 will select arm64
+    runs-on: "macos-13"
     needs:
       - fetchversion
     strategy:
@@ -265,7 +270,7 @@ jobs:
               patch -p1 < $path
               continue
             fi
-            for ver in '83' '82' '81' '80'
+            for ver in '84' '83' '82' '81' '80'
             do
               if [ $patchVer -lt $ver ]
               then
