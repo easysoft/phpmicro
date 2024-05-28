@@ -1,29 +1,8 @@
 
 micro: $(SAPI_MICRO_PATH)
 
-micro_2s_objs:
-	touch sapi/micro/micro_sfxsize_section.bin
-	rm sapi/micro/micro_sfxsize_section.bin
-	# use awk to convert the size to a 4-byte hex string
-	# always little-endian
-	printf $$(echo | $(AWK) '{h = sprintf("%08x", '"$(SFXSIZE)"'); for (i=3; i>=0; i--) {o = substr(h, i * 2 + 1, 2);printf("\\x" o);};}') > sapi/micro/micro_sfxsize_section.bin
-
-EXTRA_MICRO_BUILD_COMMANDS=
-POST_MICRO_BUILD_COMMANDS=$(STRIP) $(MICRO_STRIP_FLAGS) $(SAPI_MICRO_PATH)
-
 $(SAPI_MICRO_PATH): $(PHP_GLOBAL_OBJS) $(PHP_BINARY_OBJS) $(PHP_MICRO_OBJS)
-	$(MAKE) micro_2s_objs SFXSIZE=123456789
 	$(BUILD_MICRO)
-	$(EXTRA_MICRO_BUILD_COMMANDS)
-	$(POST_MICRO_BUILD_COMMANDS)
-	$(MAKE) micro_2s_objs SFXSIZE=`$(STAT_SIZE) $(SAPI_MICRO_PATH)`
-	$(BUILD_MICRO)
-	$(EXTRA_MICRO_BUILD_COMMANDS)
-	$(POST_MICRO_BUILD_COMMANDS)
-	$(MAKE) micro_2s_objs SFXSIZE=`$(STAT_SIZE) $(SAPI_MICRO_PATH)`
-	$(BUILD_MICRO)
-	$(EXTRA_MICRO_BUILD_COMMANDS)
-	$(POST_MICRO_BUILD_COMMANDS)
 
 MICRO_EXES = sapi/micro/tests/simpleecho.exe sapi/micro/tests/fakecmd.exe
 

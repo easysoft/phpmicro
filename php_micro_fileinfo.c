@@ -27,8 +27,21 @@ limitations under the License.
 #if defined(PHP_WIN32)
 #    include "win32/codepage.h"
 #    include <windows.h>
-#elif defined(__linux)
+#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+// all the things linux used should also work for other unix-like using ELF,
+// but not well tested
+#    include <elf.h>
 #    include <sys/auxv.h>
+#    if defined(__LP64__)
+typedef Elf64_Ehdr Elf_Ehdr;
+typedef Elf64_Shdr Elf_Shdr;
+typedef Elf64_Phdr Elf_Phdr;
+#        define ELFCLASS ELFCLASS64
+#    else
+typedef Elf32_Ehdr Elf_Ehdr;
+typedef Elf32_Phdr Elf_Phdr;
+#        define ELFCLASS ELFCLASS32
+#    endif
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
 #    include <mach-o/getsect.h>
@@ -100,9 +113,13 @@ int micro_fileinfo_init(void) {
         goto end;
     }
 #    define seekfile(x) \
-        do { SetFilePointer(handle, x, 0, FILE_BEGIN); } while (0)
+        do { \
+            SetFilePointer(handle, x, 0, FILE_BEGIN); \
+        } while (0)
 #    define readfile(dest, size, red) \
-        do { ReadFile(handle, dest, size, &red, NULL); } while (0)
+        do { \
+            ReadFile(handle, dest, size, &red, NULL); \
+        } while (0)
 #    define closefile() \
         do { \
             if (INVALID_HANDLE_VALUE != handle) { \
@@ -125,16 +142,20 @@ int micro_fileinfo_init(void) {
         goto end;
     }
     size_t filesize = stats.st_size;
-    dbgprintf("%d, %d\n", sfxsize, filesize);
+    dbgprintf("%d, %ld\n", sfxsize, filesize);
     if (filesize <= sfxsize) {
         fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
         goto end;
     }
 #    define seekfile(x) \
-        do { lseek(fd, x, SEEK_SET); } while (0)
+        do { \
+            lseek(fd, x, SEEK_SET); \
+        } while (0)
 #    define readfile(dest, size, red) \
-        do { red = read(fd, dest, size); } while (0)
+        do { \
+            red = read(fd, dest, size); \
+        } while (0)
 #    define closefile() \
         do { \
             if (-1 != fd) { \
@@ -208,6 +229,7 @@ uint32_t _micro_get_sfxsize(void) {
         return _sfxsize;
     }
 #if defined(PHP_WIN32)
+    // get resource
     HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFXSIZE_ID), RT_RCDATA);
     dbgprintf("resource: %p\n", resource);
     if (NULL == resource) {
@@ -217,9 +239,10 @@ uint32_t _micro_get_sfxsize(void) {
     }
     memcpy((void *)&_sfxsize, LockResource(LoadResource(NULL, HRSRC)), sizeof(uint32_t));
 #elif defined(__APPLE__)
+    // get mach header
     void *header = (void *)_dyld_get_image_header(0);
     unsigned long size = 0;
-    const char *section = (const char*)getsectiondata(header, "__DATA", "__micro_sfxsize", &size);
+    const char *section = (const char *)getsectiondata(header, "__DATA", "__micro_sfxsize", &size);
     if (NULL == section) {
         fprintf(stderr, "no __DATA,__micro_sfxsize section found (corrupt micro sfx).\n");
         return 0;
@@ -229,8 +252,162 @@ uint32_t _micro_get_sfxsize(void) {
         return 0;
     }
     memcpy((void *)&_sfxsize, section, sizeof(uint32_t));
-#elif defined(__linux)
-#error todo
+#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+    // get section header
+    Elf_Ehdr ehdr;
+    Elf_Shdr *shdrs = NULL, *shdr, *strtabhdr;
+    Elf_Phdr *phdrs = NULL;
+    int i;
+    const char *errMsg = "";
+    char *strtab = NULL;
+    const char *self_path = micro_get_filename();
+
+    int fd = open(self_path, O_RDONLY);
+    if (fd < 0) {
+        errMsg = "cannot open self file";
+        goto error;
+    }
+
+    if (sizeof(Elf_Ehdr) != read(fd, &ehdr, sizeof(Elf_Ehdr))) {
+        errMsg = "cannot read elf header";
+        goto error;
+    }
+
+    if (memcmp(ehdr.e_ident, ELFMAG, SELFMAG) != 0 || ehdr.e_ident[EI_CLASS] != ELFCLASS ||
+        sizeof(Elf_Ehdr) != ehdr.e_ehsize || (ehdr.e_shentsize > 0 && sizeof(Elf_Shdr) != ehdr.e_shentsize) ||
+        (ehdr.e_phentsize > 0 && sizeof(Elf_Phdr) != ehdr.e_phentsize)) {
+        errMsg = "bad elf header (corrupt micro sfx)";
+        goto error;
+    }
+
+    // read section headers
+    if (ehdr.e_shnum > 0) {
+        dbgprintf("section headers: %d, offset %016lx\n", ehdr.e_shnum, (uint64_t)ehdr.e_shoff);
+        _sfxsize = _sfxsize > ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf_Shdr)
+            ? _sfxsize
+            : ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf_Shdr);
+        dbgprintf("%d: sfxsize: %d\n", __LINE__, _sfxsize);
+
+        shdrs = malloc(sizeof(Elf_Shdr) * ehdr.e_shnum);
+        if (NULL == shdrs) {
+            // impossible
+            errMsg = "cannot allocate memory for section header";
+            goto error;
+        }
+
+        if (lseek(fd, ehdr.e_shoff, SEEK_SET) != ehdr.e_shoff) {
+            errMsg = "cannot seek to section header (corrupt micro sfx)";
+            goto error;
+        }
+        if (read(fd, shdrs, sizeof(Elf_Shdr) * ehdr.e_shnum) != sizeof(Elf_Shdr) * ehdr.e_shnum) {
+            errMsg = "cannot read section headers";
+            goto error;
+        }
+
+        // read strtab
+        strtabhdr = &shdrs[ehdr.e_shstrndx];
+        strtab = malloc(strtabhdr->sh_size + 1);
+        if (NULL == strtab) {
+            // impossible
+            errMsg = "cannot allocate memory for section header string table";
+            goto error;
+        }
+        if (lseek(fd, strtabhdr->sh_offset, SEEK_SET) != strtabhdr->sh_offset) {
+            errMsg = "cannot seek to section header string table";
+            goto error;
+        }
+        if (read(fd, strtab, strtabhdr->sh_size) != strtabhdr->sh_size) {
+            errMsg = "cannot read section header string table";
+            goto error;
+        }
+        strtab[strtabhdr->sh_size] = '\0';
+
+        for (i = 0; i < ehdr.e_shnum; i++) {
+            shdr = &shdrs[i];
+            if (shdr->sh_type == SHT_NOBITS) {
+                // if no data, skip it
+                continue;
+            }
+            _sfxsize = _sfxsize > shdr->sh_offset + shdr->sh_size ? _sfxsize : shdr->sh_offset + shdr->sh_size;
+            dbgprintf("%d: sfxsize: %d\n", __LINE__, _sfxsize);
+            if (shdr->sh_name > strtabhdr->sh_size) {
+                errMsg = "bad section header name (corrupt micro sfx)";
+                goto error;
+            }
+            dbgprintf("%016lx %016lx %s type %08x\n",
+                (uint64_t)shdr->sh_offset,
+                (uint64_t)shdr->sh_size,
+                &strtab[shdr->sh_name],
+                shdr->sh_type);
+            dbgprintf("%016lx %08x\n", shdr->sh_flags, shdr->sh_info);
+            if (shdr->sh_type != 0x1 /* application spec */ || shdr->sh_name > SHN_LORESERVE ||
+                strncmp(&strtab[shdr->sh_name], ".sfxsize", 8)) {
+                continue;
+            }
+            if (shdr->sh_size < sizeof(uint32_t)) {
+                errMsg = "bad .sfxsize section header (corrupt micro sfx)";
+                goto error;
+            }
+            if (lseek(fd, shdr->sh_offset, SEEK_SET) != shdr->sh_offset) {
+                errMsg = "cannot seek to .sfxsize section header (corrupt micro sfx)";
+                goto error;
+            }
+            if (read(fd, &_sfxsize, sizeof(uint32_t)) != sizeof(uint32_t)) {
+                errMsg = "cannot read .sfxsize section header (corrupt micro sfx)";
+                goto error;
+            }
+            // at this time, things must be allocated
+            dbgprintf("using .sfxsize section: %d\n", _sfxsize);
+            close(fd);
+            free(shdrs);
+            free(strtab);
+            return _sfxsize;
+        }
+    }
+
+    // try to get elf size
+    // _sfxsize is now max section size
+    _sfxsize = _sfxsize > ehdr.e_phoff + ehdr.e_phnum * sizeof(Elf_Phdr)
+        ? _sfxsize
+        : ehdr.e_phoff + ehdr.e_phnum * sizeof(Elf_Phdr);
+    dbgprintf("%d: sfxsize: %d\n", __LINE__, _sfxsize);
+
+    phdrs = malloc(sizeof(Elf_Phdr) * ehdr.e_phnum);
+    if (NULL == phdrs) {
+        // impossible
+        errMsg = "cannot allocate memory for program header";
+        goto error;
+    }
+
+    if (lseek(fd, ehdr.e_phoff, SEEK_SET) != ehdr.e_phoff) {
+        errMsg = "cannot seek to program header";
+        goto error;
+    }
+    if (read(fd, phdrs, sizeof(Elf_Phdr) * ehdr.e_phnum) != sizeof(Elf_Phdr) * ehdr.e_phnum) {
+        errMsg = "cannot read program header";
+        goto error;
+    }
+
+    for (i = 0; i < ehdr.e_phnum; i++) {
+        _sfxsize = phdrs[i].p_offset + phdrs[i].p_filesz > _sfxsize ? phdrs[i].p_offset + phdrs[i].p_filesz : _sfxsize;
+    }
+
+    return _sfxsize;
+error:
+    fprintf(stderr, "failed get sfxsize: %s\n", errMsg);
+    if (shdrs) {
+        free(shdrs);
+    }
+    if (strtab) {
+        free(strtab);
+    }
+    if (phdrs) {
+        free(phdrs);
+    }
+    if (fd >= 0) {
+        close(fd);
+    }
+    return _sfxsize;
 #endif
     return _sfxsize;
 }
@@ -299,7 +476,7 @@ const char *micro_get_filename(void) {
     return php_win32_cp_w_to_utf8(micro_get_filename_w());
 }
 
-#elif defined(__linux)
+#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
