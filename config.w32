@@ -70,7 +70,7 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 		if (PHP_MINOR_VERSION > 1) {
 			// since 8.2, there was ASM_OBJS variable
 			ADD_FLAG('MICRO_GLOBAL_OBJS', '$(ASM_OBJS)');
-		} else {
+		} else if (PHP_MINOR_VERSION == 1) {
 			ADD_FLAG('MICRO_GLOBAL_OBJS', '$(BUILD_DIR)\\Zend\\jump_$(FIBER_ASM_ARCH)_ms_pe_masm.obj $(BUILD_DIR)\\Zend\\make_$(FIBER_ASM_ARCH)_ms_pe_masm.obj');
 		}
 	}
