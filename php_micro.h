@@ -24,7 +24,7 @@ limitations under the License.
 #define STRINGIZE2(x) #x
 
 #define PHP_MICRO_VER_MAJ 0
-#define PHP_MICRO_VER_MIN 1
+#define PHP_MICRO_VER_MIN 2
 #define PHP_MICRO_VER_PAT 0
 // #define PHP_MICRO_VER_APP "nope"
 #ifdef PHP_MICRO_VER_APP
