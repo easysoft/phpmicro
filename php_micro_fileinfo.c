@@ -240,14 +240,98 @@ uint32_t _micro_get_sfxsize(void) {
     }
 #if defined(PHP_WIN32)
     // get resource
+    const char * errMsg = "";
     HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFXSIZE_ID), RT_RCDATA);
+    HANDLE hFile = INVALID_HANDLE_VALUE;
+    DWORD readBytes;
+    IMAGE_DOS_HEADER dosHeader;
+    IMAGE_NT_HEADERS ntHeader;
+    IMAGE_SECTION_HEADER *sectionHeaders;
     dbgprintf("resource: %p\n", resource);
-    if (NULL == resource) {
-        dbgprintf("GetLastError: %d\n", GetLastError());
-        fprintf(stderr, "no sfx resource found (corrupt micro sfx).\n");
-        return 0;
+    if (NULL != resource) {
+        // read as big endian
+        uint8_t sfxsize_bytes[4];
+        memcpy((void *)&sfxsize_bytes, LockResource(LoadResource(NULL, resource)), sizeof(uint32_t));
+        _sfxsize = ((uint32_t)sfxsize_bytes[0] << 24) + ((uint32_t)sfxsize_bytes[1] << 16) +
+            ((uint32_t)sfxsize_bytes[2] << 8) + (uint32_t)sfxsize_bytes[3];
+        return _sfxsize;
     }
-    memcpy((void *)&_sfxsize, LockResource(LoadResource(NULL, HRSRC)), sizeof(uint32_t));
+    dbgprintf("FindResourceA: %08x\n", GetLastError());
+
+    hFile = CreateFileW(micro_get_filename_w(),
+        FILE_ATTRIBUTE_READONLY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        NULL,
+        OPEN_EXISTING,
+        0,
+        NULL);
+    if (INVALID_HANDLE_VALUE == hFile) {
+        dbgprintf("CreateFileW: %08x\n", GetLastError());
+        errMsg = "cannot open self file";
+        goto error;
+    }
+
+    if (TRUE != ReadFile(hFile, &dosHeader, sizeof(IMAGE_DOS_HEADER), &readBytes, NULL) ||
+        sizeof(IMAGE_DOS_HEADER) != readBytes) {
+        dbgprintf("ReadFile: %08x\n", GetLastError());
+        errMsg = "cannot read dos header (corrupt micro sfx)";
+        goto error;
+    }
+
+    if (dosHeader.e_magic != IMAGE_DOS_SIGNATURE) {
+        errMsg = "bad dos header (corrupt micro sfx)";
+        goto error;
+    }
+
+    if (INVALID_SET_FILE_POINTER == SetFilePointer(hFile, dosHeader.e_lfanew, NULL, FILE_BEGIN)) {
+        errMsg = "cannot seek to nt header (corrupt micro sfx)";
+        goto error;
+    }
+    if (TRUE != ReadFile(hFile, &ntHeader, sizeof(IMAGE_NT_HEADERS), &readBytes, NULL) ||
+        sizeof(IMAGE_NT_HEADERS) != readBytes) {
+        dbgprintf("ReadFile: %08x\n", GetLastError());
+        errMsg = "cannot read nt header (corrupt micro sfx)";
+        goto error;
+    }
+
+    if (
+        ntHeader.Signature != IMAGE_NT_SIGNATURE ||
+        ntHeader.FileHeader.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER32) ||
+        ntHeader.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC ||
+        ntHeader.OptionalHeader.NumberOfRvaAndSizes != IMAGE_NUMBEROF_DIRECTORY_ENTRIES
+    ) {
+        errMsg = "bad nt header (corrupt micro sfx)";
+        goto error;
+    }
+
+    sectionHeaders = malloc(sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections);
+
+    if (TRUE != ReadFile(hFile, sectionHeaders, sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections, &readBytes, NULL) ||
+        sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections != readBytes) {
+        dbgprintf("ReadFile: %08x\n", GetLastError());
+        dbgprintf("section headers: %d\n", ntHeader.FileHeader.NumberOfSections);
+        dbgprintf("read: %d\n", readBytes);
+        errMsg = "cannot read section headers (corrupt micro sfx)";
+        goto error;
+    }
+
+    for (int i = 0; i < ntHeader.FileHeader.NumberOfSections; i++) {
+        _sfxsize = _sfxsize > sectionHeaders[i].PointerToRawData + sectionHeaders[i].SizeOfRawData
+            ? _sfxsize
+            : sectionHeaders[i].PointerToRawData + sectionHeaders[i].SizeOfRawData;
+    }
+    
+    error:
+    if (0 == _sfxsize) {
+        fprintf(stderr, "failed get sfxsize: %s\n", errMsg);
+    }
+    if (INVALID_HANDLE_VALUE != hFile) {
+        CloseHandle(hFile);
+    }
+    if (NULL != sectionHeaders) {
+        free(sectionHeaders);
+    }
+
     return _sfxsize;
 #elif defined(__APPLE__)
     // get mach header
@@ -421,9 +505,10 @@ uint32_t _micro_get_sfxsize(void) {
         _sfxsize = phdrs[i].p_offset + phdrs[i].p_filesz > _sfxsize ? phdrs[i].p_offset + phdrs[i].p_filesz : _sfxsize;
     }
 
-    return _sfxsize;
 error:
-    fprintf(stderr, "failed get sfxsize: %s\n", errMsg);
+    if (0 == _sfxsize) {
+        fprintf(stderr, "failed get sfxsize: %s\n", errMsg);
+    }
     if (shdrs) {
         free(shdrs);
     }
