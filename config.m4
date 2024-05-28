@@ -56,9 +56,7 @@ if test "$PHP_MICRO" != "no"; then
     if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then
       AC_MSG_WARN(macOS donot support static mach-o build)
     fi
-    PHP_SUBST(MICRO_LDFLAGS)
-    MICRO_LDFLAGS="-Wl,-sectcreate,__DATA,__micro_sfxsize,sapi/micro/micro_sfxsize_section.bin"
-    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(MICRO_LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
+    BUILD_MICRO="\$(CC) \$(CFLAGS_CLEAN) \$(EXTRA_CFLAGS) \$(EXTRA_LDFLAGS_PROGRAM) \$(LDFLAGS) \$(NATIVE_RPATHS) \$(PHP_GLOBAL_OBJS:.lo=.o) \$(PHP_BINARY_OBJS:.lo=.o) \$(PHP_MICRO_OBJS:.lo=.o) \$(PHP_FRAMEWORKS) \$(EXTRA_LIBS) \$(ZEND_EXTRA_LIBS) -o \$(SAPI_MICRO_PATH)"
     ;;
   *)
     if test "x${PHP_MICRO%%all-static*}" != "x${PHP_MICRO}"; then

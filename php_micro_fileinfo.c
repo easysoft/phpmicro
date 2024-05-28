@@ -45,6 +45,16 @@ typedef Elf32_Phdr Elf_Phdr;
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
 #    include <mach-o/getsect.h>
+#    if defined(__LP64__)
+typedef struct mach_header_64 mach_header;
+typedef struct segment_command_64 segment_command;
+#define MACH_HEADER_MAGIC MH_MAGIC_64
+#define LOADCOMMAND_SEGMENT LC_SEGMENT_64
+#    else
+typedef struct mach_header mach_header;
+typedef struct segment_command segment_command;
+#define LOADCOMMAND_SEGMENT LC_SEGMENT
+#    endif
 #else
 #    error because we donot support that platform yet
 #endif
@@ -238,20 +248,35 @@ uint32_t _micro_get_sfxsize(void) {
         return 0;
     }
     memcpy((void *)&_sfxsize, LockResource(LoadResource(NULL, HRSRC)), sizeof(uint32_t));
+    return _sfxsize;
 #elif defined(__APPLE__)
     // get mach header
-    void *header = (void *)_dyld_get_image_header(0);
+    mach_header *header = (mach_header *)_dyld_get_image_header(0);
+    const segment_command *linkedit = NULL;
     unsigned long size = 0;
+
     const char *section = (const char *)getsectiondata(header, "__DATA", "__micro_sfxsize", &size);
     if (NULL == section) {
-        fprintf(stderr, "no __DATA,__micro_sfxsize section found (corrupt micro sfx).\n");
-        return 0;
+
+        linkedit = getsegbyname("__LINKEDIT");
+        if (NULL == linkedit) {
+            fprintf(stderr, "no __LINKEDIT segment found (corrupt micro sfx).\n");
+            return 0;
+        }
+        _sfxsize = (linkedit->fileoff + linkedit->filesize) % 0xffffffff;
+        dbgprintf("no __DATA,__micro_sfxsize section found, use end of __LINKEDIT: %d\n", _sfxsize);
+        return _sfxsize;
     }
     if (sizeof(uint32_t) > size) {
         fprintf(stderr, "bad __DATA,__micro_sfxsize section found (corrupt micro sfx).\n");
         return 0;
     }
-    memcpy((void *)&_sfxsize, section, sizeof(uint32_t));
+    // read as big endian
+    uint8_t sfxsize_bytes[4];
+    memcpy((void *)&sfxsize_bytes, section, 4);
+    _sfxsize = ((uint32_t)sfxsize_bytes[0] << 24) + ((uint32_t)sfxsize_bytes[1] << 16) +
+        ((uint32_t)sfxsize_bytes[2] << 8) + (uint32_t)sfxsize_bytes[3];
+    return _sfxsize;
 #elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
     // get section header
     Elf_Ehdr ehdr;
@@ -352,10 +377,14 @@ uint32_t _micro_get_sfxsize(void) {
                 errMsg = "cannot seek to .sfxsize section header (corrupt micro sfx)";
                 goto error;
             }
-            if (read(fd, &_sfxsize, sizeof(uint32_t)) != sizeof(uint32_t)) {
+            // read as big endian
+            uint8_t sfxsize_bytes[4];
+            if (read(fd, &sfxsize_bytes, sizeof(uint32_t)) != sizeof(uint32_t)) {
                 errMsg = "cannot read .sfxsize section header (corrupt micro sfx)";
                 goto error;
             }
+            _sfxsize = ((uint32_t)sfxsize_bytes[0] << 24) + ((uint32_t)sfxsize_bytes[1] << 16) +
+                ((uint32_t)sfxsize_bytes[2] << 8) + (uint32_t)sfxsize_bytes[3];
             // at this time, things must be allocated
             dbgprintf("using .sfxsize section: %d\n", _sfxsize);
             close(fd);
@@ -409,7 +438,6 @@ error:
     }
     return _sfxsize;
 #endif
-    return _sfxsize;
 }
 
 #ifdef PHP_WIN32
