@@ -586,7 +586,35 @@ const wchar_t *micro_get_filename_w() {
 }
 
 const char *micro_get_filename(void) {
-    return php_win32_cp_w_to_utf8(micro_get_filename_w());
+    static char *self_filename = NULL;
+    if (NULL != self_filename) {
+        return self_filename;
+    }
+    int self_filename_len;
+    LPWCH self_filename_w = micro_get_filename_w();
+    if (NULL == self_filename_w) {
+        return NULL;
+    }
+
+    self_filename_len = WideCharToMultiByte(CP_UTF8, 0, self_filename_w, -1, NULL, 0, NULL, NULL);
+    if (0 == self_filename_len) {
+        // null string? wtf?
+        return NULL;
+    }
+
+    self_filename = malloc(self_filename_len);
+    if (NULL == self_filename) {
+        // impossible
+        return NULL;
+    }
+
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, self_filename_w, -1, self_filename, self_filename_len, NULL, NULL)) {
+        // impossible
+        free(self_filename);
+        return NULL;
+    }
+
+    return self_filename;
 }
 
 #elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
