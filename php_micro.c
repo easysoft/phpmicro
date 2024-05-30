@@ -619,20 +619,20 @@ int main(int argc, char *argv[])
 
         // omit PHP_BINARY constant
         // or let PHP_BINARY constant <- micro.php_binary if setted in ini
-        if (SUCCESS == zend_hash_str_del(EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY") - 1)) {
-            dbgprintf("remake pb constant\n");
+        zend_constant *pbconstant = NULL;
+        if (NULL != (pbconstant = 
+            (zend_constant *)zend_hash_str_find_ptr(EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY") - 1))) {
+            dbgprintf("remake pb constant %s\n", Z_STRVAL(pbconstant->value));
             zend_ini_entry *pbentry = NULL;
             if (NULL !=
                 (pbentry = zend_hash_str_find_ptr(
                      EG(ini_directives), PHP_MICRO_INIENTRY(php_binary), sizeof(PHP_MICRO_INIENTRY(php_binary)) - 1))) {
-                dbgprintf("to %s\n", ZSTR_VAL(pbentry->value));
-                REGISTER_MAIN_STRINGL_CONSTANT("PHP_BINARY",
-                    ZSTR_VAL(pbentry->value),
-                    ZSTR_LEN(pbentry->value),
-                    CONST_PERSISTENT | CONST_CS | CONST_NO_FILE_CACHE);
+                dbgprintf("to \"%s\" [%lu]\n", ZSTR_VAL(pbentry->value), ZSTR_LEN(pbentry->value));
+
+                ZVAL_STR_COPY(&pbconstant->value, pbentry->value);
             } else {
                 dbgprintf("removed\n");
-                REGISTER_MAIN_STRINGL_CONSTANT("PHP_BINARY", "", 0, CONST_PERSISTENT | CONST_CS | CONST_NO_FILE_CACHE);
+                ZVAL_STRINGL(&pbconstant->value, "", 0);
             }
         }
         /*
@@ -673,6 +673,9 @@ int main(int argc, char *argv[])
         SG(options) |= SAPI_OPTION_NO_CHDIR;
 
         zend_stream_init_fp(&file_handle, fp, self_filename_mb);
+#if PHP_VERSION_ID >= 80100
+        file_handle.primary_script = 1;
+#endif // PHP_VERSION_ID >= 80100
 
         dbgprintf("set args\n");
         SG(request_info).argc = argc;
@@ -715,6 +718,9 @@ int main(int argc, char *argv[])
 
 out:
     // frees here
+	if (file_handle.filename) {
+		zend_destroy_file_handle(&file_handle);
+	}
     if (request_started) {
         dbgprintf("rshutdown\n");
         php_request_shutdown((void *)0);
