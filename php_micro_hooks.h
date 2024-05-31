@@ -40,5 +40,10 @@ int micro_reregister_proto(const char *proto);
  *   should be called before mshutdown, after rshutdown
  */
 int micro_free_reregistered_protos(void);
+/*
+ *  micro_hook_file_handle - hook file_handle with offset
+ *   only for self
+ */
+int micro_hook_file_handle(zend_file_handle *file_handle);
 
 #endif

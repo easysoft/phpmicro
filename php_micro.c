@@ -673,6 +673,7 @@ int main(int argc, char *argv[])
         SG(options) |= SAPI_OPTION_NO_CHDIR;
 
         zend_stream_init_fp(&file_handle, fp, self_filename_mb);
+        micro_hook_file_handle(&file_handle);
 #if PHP_VERSION_ID >= 80100
         file_handle.primary_script = 1;
 #endif // PHP_VERSION_ID >= 80100

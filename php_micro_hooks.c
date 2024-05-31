@@ -27,8 +27,8 @@ limitations under the License.
 // original zend_post_startup_cb holder
 static int (*micro_zend_post_startup_cb_orig)(void) = NULL;
 /*
- *	micro_post_mstartup - post mstartup callback called as zend_post_startup_cb
- *	used to add ini_entries without additional_modules
+ *    micro_post_mstartup - post mstartup callback called as zend_post_startup_cb
+ *    used to add ini_entries without additional_modules
  */
 int micro_post_mstartup(void) {
     dbgprintf("start reg inientries\n");
@@ -45,7 +45,7 @@ int micro_post_mstartup(void) {
     return ret;
 }
 /*
- *	micro_register_post_startup_cb - register post mstartup callback
+ *    micro_register_post_startup_cb - register post mstartup callback
  */
 int micro_register_post_startup_cb(void) {
     if (NULL != zend_post_startup_cb) {
@@ -106,8 +106,8 @@ static int micro_plain_files_stat(php_stream *stream, php_stream_statbuf *ssb) {
 
 /* stream ops hookers */
 /*
- *	micro_plain_files_set_option - php_stream sef_option op with offset
- *	 to fix mmap-like behaiver
+ *    micro_plain_files_set_option - php_stream sef_option op with offset
+ *     to fix mmap-like behaiver
  */
 static int micro_plain_files_set_option(php_stream *stream, int option, int value, void *ptrparam) {
     void *myptrparam = ptrparam;
@@ -124,10 +124,10 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
         /**
          * linux mmap(2) manpage said:
          * EOVERFLOW
-         *     The file is a regular file and 
+         *     The file is a regular file and
          *     the value of off plus len exceeds the offset maximum established in the open file description
          *     associated with fildes.
-         * 
+         *
          */
         if ((limit = micro_get_sfxsize_limit()) != 0) {
             if (range->offset + range->length > limit) {
@@ -146,13 +146,16 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
     return ret;
 }
 /*
- *	micro_plain_files_seek_with_offset - php_stream seek op with offset
- *	 return -1 for failed or 0 for success (behaives like fseek)
+ *    micro_plain_files_seek_with_offset - php_stream seek op with offset
+ *     return -1 for failed or 0 for success (behaives like fseek)
  */
 static int micro_plain_files_seek_with_offset(
     php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset) {
     dbgprintf("seeking %zd with sfxsize %d limit %d whence %d\n",
-        offset, micro_get_sfxsize(), micro_get_sfxsize_limit(), whence);
+        offset,
+        micro_get_sfxsize(),
+        micro_get_sfxsize_limit(),
+        whence);
     int ret = -1;
     zend_off_t want_offset, real_offset;
     zend_off_t sfxsize, limit;
@@ -161,7 +164,7 @@ static int micro_plain_files_seek_with_offset(
     limit = micro_get_sfxsize_limit();
 
     orig_ops(myops, stream);
-    switch(whence) {
+    switch (whence) {
         case SEEK_SET:
             want_offset = offset + sfxsize;
             break;
@@ -201,14 +204,14 @@ static int micro_plain_files_seek_with_offset(
 
     dbgprintf("new offset: %zd\n", *newoffset);
     return 0;
-    error:
+error:
     ours_ops(stream);
     // php_error_docref(NULL, E_WARNING, "Seek on self stream failed");
     return -1;
 }
 
 /*
- *	micro_plain_files_stat_with_offset - php_stream stat op with offset
+ *    micro_plain_files_stat_with_offset - php_stream stat op with offset
  */
 static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb) {
     int ret = -1;
@@ -235,7 +238,7 @@ static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_sta
  * micro_plain_files_read_with_offset - php_stream read op with offset
  */
 static ssize_t micro_plain_files_read_with_offset(php_stream *stream, char *buf, size_t count) {
-    ssize_t ret = -1;
+    ssize_t ret = 0;
     zend_off_t current;
     size_t limit;
 
@@ -246,19 +249,23 @@ static ssize_t micro_plain_files_read_with_offset(php_stream *stream, char *buf,
         goto error;
     }
 
+    dbgprintf("limit %d, current %zd, count %zd\n", micro_get_sfxsize_limit(), current, count);
     if ((limit = micro_get_sfxsize_limit()) > 0) {
-        if (((size_t)current) + count > limit) {
+        if (current >= limit) {
+            // already at end
+            goto error;
+        } else if (((size_t)current) + count > limit) {
             count = limit - current;
         }
     }
     ret = stream->ops->read(stream, buf, count);
-    error:
+error:
     ours_ops(stream);
     return ret;
 }
 
 /*
- *	micro_plain_files_close_with_offset - php_stream close destroyer
+ *    micro_plain_files_close_with_offset - php_stream close destroyer
  */
 static int micro_plain_files_close_with_offset(php_stream *stream, int close_handle) {
     dbgprintf("closing with-offset file %p\n", stream);
@@ -375,7 +382,7 @@ static int micro_plain_files_url_stater(
 static php_stream_wrapper_ops micro_plain_files_wops_with_offset;
 
 /*
- *	micro_hook_plain_files_wops - hook plain file wrapper php_plain_files_wrapper
+ *    micro_hook_plain_files_wops - hook plain file wrapper php_plain_files_wrapper
  */
 int micro_hook_plain_files_wops(void) {
     micro_plain_files_wops_orig = php_plain_files_wrapper.wops;
@@ -444,7 +451,7 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
 #endif
 
 /*
- *	micro_reregister_proto - hook some:// protocol
+ *    micro_reregister_proto - hook some:// protocol
  *   should be called after mstartup, before start execution
  */
 int micro_reregister_proto(const char *proto) {
@@ -527,7 +534,7 @@ end:
 #endif
 
 /*
- *	micro_free_reregistered_protos - remove hook of protocol schemes
+ *    micro_free_reregistered_protos - remove hook of protocol schemes
  *   should be called before mshutdown, after rshutdown
  */
 int micro_free_reregistered_protos(void) {
@@ -569,5 +576,58 @@ static inline int initial_seek(php_stream *ps) {
         // self should be seekable, if not, why?
         abort();
     }
+    return SUCCESS;
+}
+
+/* ======== things for hooking zend_stream ======== */
+
+static ssize_t micro_zend_stream_reader_with_offset(void *handle, char *buf, size_t len) {
+    uint32_t limit = 0;
+    FILE *fp = (FILE *)handle;
+    zend_off_t cur = fseek(fp, 0, SEEK_CUR);
+
+    if ((limit = micro_get_sfxsize_limit()) > 0) {
+        if (cur >= limit) {
+            return 0;
+        } else if (cur + len > limit) {
+            len = limit - cur;
+        }
+    }
+    dbgprintf("reader with offset %zd, len become %zd\n", cur, len);
+    return fread(buf, 1, len, fp);
+}
+
+static size_t micro_zend_stream_fsizer_with_offset(void *handle) {
+    uint32_t limit = micro_get_sfxsize_limit();
+
+    if (limit > 0) {
+        dbgprintf("fsizer return %d\n", limit - micro_get_sfxsize());
+        return limit - micro_get_sfxsize();
+    }
+
+    zend_stat_t buf = {0};
+    if (handle && zend_fstat(fileno((FILE *)handle), &buf) == 0) {
+#ifdef S_ISREG
+        if (!S_ISREG(buf.st_mode)) {
+            return 0;
+        }
+#endif
+        dbgprintf("fsizer return %ld\n", buf.st_size - micro_get_sfxsize());
+        return buf.st_size - micro_get_sfxsize();
+    }
+    return -1;
+}
+
+static void micro_zend_stream_closer(void *handle) {
+    fclose((FILE *)handle);
+}
+
+int micro_hook_file_handle(zend_file_handle *file_handle) {
+    file_handle->type = ZEND_HANDLE_STREAM;
+    file_handle->handle.stream.handle = file_handle->handle.fp;
+    file_handle->handle.stream.isatty = 0;
+    file_handle->handle.stream.reader = (zend_stream_reader_t)micro_zend_stream_reader_with_offset;
+    file_handle->handle.stream.closer = (zend_stream_closer_t)micro_zend_stream_closer;
+    file_handle->handle.stream.fsizer = (zend_stream_fsizer_t)micro_zend_stream_fsizer_with_offset;
     return SUCCESS;
 }

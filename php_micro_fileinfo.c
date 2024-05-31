@@ -302,8 +302,12 @@ int _micro_init_sfxsize() {
     if (NULL != resource) {
         resourceSize = SizeofResource(NULL, resource);
         // read as big endian
+        if (resourceSize > sizeof(micro_sfxsize_section_t)) {
+            resourceSize = sizeof(micro_sfxsize_section_t);
+        }
         memcpy((void *)&sfxsizeSection, LockResource(LoadResource(NULL, resource)), resourceSize);
         read_sfxsize_section(resourceSize);
+        dbgprintf("using resource: %d, %d\n", _final_sfxsize, _sfxsize_limit);
         return SUCCESS;
     }
     dbgprintf("FindResourceA: %08x\n", GetLastError());
@@ -403,8 +407,12 @@ error:
         return SUCCESS;
     }
 
+    if (size > sizeof(micro_sfxsize_section_t)) {
+        size = sizeof(micro_sfxsize_section_t);
+    }
     memcpy((void *)&sfxsizeSection, section, size);
     read_sfxsize_section(size);
+    dbgprintf("using __DATA,__micro_sfxsize section: %d, %d\n", _final_sfxsize, _sfxsize_limit);
 
     return SUCCESS;
 #elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -501,15 +509,18 @@ error:
                 errMsg = "cannot seek to .sfxsize section header (corrupt micro sfx)";
                 goto error;
             }
+            if (shdr->sh_size > sizeof(micro_sfxsize_section_t)) {
+                // i'm lazy to create another size_t
+                shdr->sh_size = sizeof(micro_sfxsize_section_t);
+            }
             // read as big endian
-            uint8_t sfxsize_bytes[4];
-            if (read(fd, &sfxsize_bytes, shdr->sh_size) != shdr->sh_size) {
+            if (read(fd, &sfxsizeSection, shdr->sh_size) != shdr->sh_size) {
                 errMsg = "cannot read .sfxsize section header (corrupt micro sfx)";
                 goto error;
             }
             read_sfxsize_section(shdr->sh_size);
             // at this time, things must be allocated
-            dbgprintf("using .sfxsize section: %d\n", _final_sfxsize);
+            dbgprintf("using .sfxsize section: %d, %d\n", _final_sfxsize, _sfxsize_limit);
             close(fd);
             free(shdrs);
             free(strtab);
