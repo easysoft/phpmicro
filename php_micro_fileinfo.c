@@ -126,8 +126,7 @@ int micro_fileinfo_init(void) {
         ret = FAILURE;
         goto end;
     }
-    BOOL ret = GetFileSizeEx(handle, &_filesize);
-    if (!ret) {
+    if (!GetFileSizeEx(handle, &_filesize)) {
         fwprintf(stderr, L"failed get file size: %d\n", GetLastError());
         ret = GetLastError();
         goto end;
