@@ -151,7 +151,7 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
  */
 static int micro_plain_files_seek_with_offset(
     php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset) {
-    dbgprintf("seeking %zd with sfxsize %d limit %d whence %d\n",
+    dbgprintf("seeking %zd with sfxsize %zd limit %zd whence %d\n",
         offset,
         micro_get_sfxsize(),
         micro_get_sfxsize_limit(),
@@ -215,7 +215,7 @@ error:
  */
 static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb) {
     int ret = -1;
-    uint32_t limit = 0;
+    size_t limit = 0;
 
     orig_ops(myops, stream);
     ret = stream->ops->stat(stream, ssb);
@@ -249,7 +249,7 @@ static ssize_t micro_plain_files_read_with_offset(php_stream *stream, char *buf,
         goto error;
     }
 
-    dbgprintf("limit %d, current %zd, count %zd\n", micro_get_sfxsize_limit(), current, count);
+    dbgprintf("limit %zd, current %zd, count %zd\n", micro_get_sfxsize_limit(), current, count);
     if ((limit = micro_get_sfxsize_limit()) > 0) {
         if (current >= limit) {
             // already at end
@@ -582,10 +582,11 @@ static inline int initial_seek(php_stream *ps) {
 /* ======== things for hooking zend_stream ======== */
 
 static ssize_t micro_zend_stream_reader_with_offset(void *handle, char *buf, size_t len) {
-    uint32_t limit = 0;
+    size_t limit = 0;
     FILE *fp = (FILE *)handle;
-    zend_off_t cur = fseek(fp, 0, SEEK_CUR);
+    zend_off_t cur = zend_fseek(fp, 0, SEEK_CUR);
 
+    dbgprintf("reader %zd from %zd\n", len, cur);
     if ((limit = micro_get_sfxsize_limit()) > 0) {
         if (cur >= limit) {
             return 0;
@@ -593,15 +594,15 @@ static ssize_t micro_zend_stream_reader_with_offset(void *handle, char *buf, siz
             len = limit - cur;
         }
     }
-    dbgprintf("reader with offset %zd, len become %zd\n", cur, len);
+    dbgprintf("reader with offset len become %zd\n", len);
     return fread(buf, 1, len, fp);
 }
 
 static size_t micro_zend_stream_fsizer_with_offset(void *handle) {
-    uint32_t limit = micro_get_sfxsize_limit();
+    size_t limit = micro_get_sfxsize_limit();
 
     if (limit > 0) {
-        dbgprintf("fsizer return %d\n", limit - micro_get_sfxsize());
+        dbgprintf("fsizer return %zd\n", limit - micro_get_sfxsize());
         return limit - micro_get_sfxsize();
     }
 
@@ -612,7 +613,7 @@ static size_t micro_zend_stream_fsizer_with_offset(void *handle) {
             return 0;
         }
 #endif
-        dbgprintf("fsizer return %ld\n", buf.st_size - micro_get_sfxsize());
+        dbgprintf("fsizer return %zd\n", buf.st_size - micro_get_sfxsize());
         return buf.st_size - micro_get_sfxsize();
     }
     return -1;
@@ -629,5 +630,6 @@ int micro_hook_file_handle(zend_file_handle *file_handle) {
     file_handle->handle.stream.reader = (zend_stream_reader_t)micro_zend_stream_reader_with_offset;
     file_handle->handle.stream.closer = (zend_stream_closer_t)micro_zend_stream_closer;
     file_handle->handle.stream.fsizer = (zend_stream_fsizer_t)micro_zend_stream_fsizer_with_offset;
+    zend_fseek((FILE *)file_handle->handle.fp, micro_get_sfxsize(), SEEK_SET);
     return SUCCESS;
 }

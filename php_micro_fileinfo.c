@@ -69,16 +69,15 @@ typedef struct segment_command segment_command;
 
 const char *micro_get_filename(void);
 
-// do we need uint64_t for sfx size?
-static uint32_t _final_sfxsize = 0;
-static uint32_t _sfxsize_limit = 0;
+static size_t _final_sfxsize = 0;
+static size_t _sfxsize_limit = 0;
 int _micro_init_sfxsize(void);
 
-uint32_t micro_get_sfxsize(void) {
+size_t micro_get_sfxsize(void) {
     return _final_sfxsize;
 }
 
-uint32_t micro_get_sfxsize_limit(void) {
+size_t micro_get_sfxsize_limit(void) {
     return _sfxsize_limit;
 }
 
@@ -103,8 +102,9 @@ const wchar_t *micro_get_filename_w();
 
 int micro_fileinfo_init(void) {
     int ret = 0;
-    uint32_t len = 0;
-    uint32_t sfxsize;
+    size_t sfxsize;
+    size_t filesize;
+    uint32_t ini_len = 0;
 
     if (SUCCESS != _micro_init_sfxsize()) {
         return FAILURE;
@@ -113,6 +113,7 @@ int micro_fileinfo_init(void) {
     sfxsize = micro_get_sfxsize();
 
 #ifdef PHP_WIN32
+    LARGE_INTEGER _filesize;
     LPCWSTR self_path = micro_get_filename_w();
     HANDLE handle = CreateFileW(self_path,
         FILE_ATTRIBUTE_READONLY,
@@ -125,8 +126,13 @@ int micro_fileinfo_init(void) {
         ret = FAILURE;
         goto end;
     }
-    DWORD filesize = GetFileSize(handle, NULL);
-    dbgprintf("%d, %d\n", sfxsize, filesize);
+    BOOL ret = GetFileSizeEx(handle, &_filesize);
+    if (!ret) {
+        fwprintf(stderr, L"failed get file size: %d\n", GetLastError());
+        ret = GetLastError();
+        goto end;
+    }
+    filesize = _filesize.QuadPart;
     if (filesize <= sfxsize) {
         fwprintf(stderr, L"no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
@@ -134,7 +140,8 @@ int micro_fileinfo_init(void) {
     }
 #    define seekfile(x) \
         do { \
-            SetFilePointer(handle, x, 0, FILE_BEGIN); \
+            _filesize.QuadPart = x; \
+            SetFilePointer(handle, _filesize.LowPart, &_filesize.HighPart, FILE_BEGIN); \
         } while (0)
 #    define readfile(dest, size, red) \
         do { \
@@ -161,8 +168,8 @@ int micro_fileinfo_init(void) {
         ret = errno;
         goto end;
     }
-    size_t filesize = stats.st_size;
-    dbgprintf("%d, %ld\n", sfxsize, filesize);
+    filesize = stats.st_size;
+    dbgprintf("%zd, %zd\n", sfxsize, filesize);
     if (filesize <= sfxsize) {
         fprintf(stderr, "no payload found.\n" PHP_MICRO_HINT, self_path);
         ret = FAILURE;
@@ -185,16 +192,19 @@ int micro_fileinfo_init(void) {
 #endif // PHP_WIN32
     ext_ini_header_t ext_ini_header = {0};
     if (filesize <= sfxsize + sizeof(ext_ini_header)) {
-        ret = FAILURE;
+        ret = SUCCESS;
         goto end;
     }
     // we may have extra ini configs.
     seekfile(sfxsize);
-    uint32_t red = 0;
+    int red = 0;
     readfile(&ext_ini_header, sizeof(ext_ini_header), red);
-    if (sizeof(ext_ini_header) != red) {
-        // cannot read file
+    if (red < 0) {
+        // cannot read ini header
         ret = errno;
+        goto end;
+    } else if (sizeof(ext_ini_header) != red) {
+        ret = SUCCESS;
         goto end;
     }
 
@@ -204,34 +214,34 @@ int micro_fileinfo_init(void) {
         goto end;
     }
     // shabby ntohl
-    len = (ext_ini_header.len[0] << 24) + (ext_ini_header.len[1] << 16) + (ext_ini_header.len[2] << 8) +
+    ini_len = (ext_ini_header.len[0] << 24) + (ext_ini_header.len[1] << 16) + (ext_ini_header.len[2] << 8) +
         ext_ini_header.len[3];
-    dbgprintf("len is %d\n", len);
-    if (filesize <= sfxsize + sizeof(ext_ini_header) + len) {
+    if (filesize <= sfxsize + sizeof(ext_ini_header) + ini_len) {
         // bad len, not an extra ini
         ret = SUCCESS;
-        len = 0;
+        ini_len = 0;
         goto end;
     }
-    micro_ext_ini.data = malloc(len + 2);
-    readfile(micro_ext_ini.data, len, red);
-    if (len != red) {
+    micro_ext_ini.data = malloc(ini_len + 2);
+    readfile(micro_ext_ini.data, ini_len, red);
+    if (ini_len != red) {
         // cannot read file
         ret = errno;
-        len = 0;
+        ini_len = 0;
         free(micro_ext_ini.data);
         micro_ext_ini.data = NULL;
         goto end;
     }
     // two '\0's like hardcoden inis
-    micro_ext_ini.data[len] = '\0';
-    micro_ext_ini.data[len + 1] = '\0';
+    micro_ext_ini.data[ini_len] = '\0';
+    micro_ext_ini.data[ini_len + 1] = '\0';
     dbgprintf("using ext ini %s\n", micro_ext_ini.data);
-    micro_ext_ini.size = len + 1;
-    len += sizeof(ext_ini_header_t);
+    micro_ext_ini.size = ini_len + 1;
+    ini_len += sizeof(ext_ini_header_t);
 
 end:
-    _final_sfxsize = sfxsize + len;
+    dbgprintf("embed ini len is %d\n", ini_len);
+    _final_sfxsize = sfxsize + ini_len;
     closefile();
     return ret;
 #undef seekfile
@@ -252,12 +262,12 @@ end:
  */
 typedef struct _micro_sfxsize_section_t {
     /* sfx executable size in bytes, big endian */
-    uint8_t sizeBytes[4];
+    uint8_t sizeBytes[8];
     /**
      * limit offset from the whole file begin
      * in bytes, big endian, maybe omit, omitted or 0 for no limit
      */
-    uint8_t limitBytes[4];
+    uint8_t limitBytes[8];
 } micro_sfxsize_section_t;
 
 /*
@@ -265,18 +275,22 @@ typedef struct _micro_sfxsize_section_t {
  */
 int _micro_init_sfxsize() {
     micro_sfxsize_section_t sfxsizeSection = {{0}, {0}};
+#define bytesntollh(bytes, ll) \
+    do { \
+        ll = (uint64_t)(bytes[0]) << 56 | (uint64_t)(bytes[1]) << 48 | (uint64_t)(bytes[2]) << 40 | \
+            (uint64_t)(bytes[3]) << 32 | (uint64_t)(bytes[4]) << 24 | (uint64_t)(bytes[5]) << 16 | \
+            (uint64_t)(bytes[6]) << 8 | (uint64_t)(bytes[7]); \
+    } while (0)
 #define read_sfxsize_section(size) \
     do { \
-        if (size >= sizeof(uint32_t)) { \
-            _final_sfxsize = sfxsizeSection.sizeBytes[0] << 24 | sfxsizeSection.sizeBytes[1] << 16 | \
-                sfxsizeSection.sizeBytes[2] << 8 | sfxsizeSection.sizeBytes[3]; \
+        if (size >= sizeof(uint64_t)) { \
+            bytesntollh(sfxsizeSection.sizeBytes, _final_sfxsize); \
         } else { \
             fprintf(stderr, "bad sfxsize section\n"); \
             return FAILURE; \
         } \
-        if (size >= sizeof(uint32_t) + sizeof(uint32_t)) { \
-            _sfxsize_limit = sfxsizeSection.limitBytes[0] << 24 | sfxsizeSection.limitBytes[1] << 16 | \
-                sfxsizeSection.limitBytes[2] << 8 | sfxsizeSection.limitBytes[3]; \
+        if (size >= 2 * sizeof(uint64_t)) { \
+            bytesntollh(sfxsizeSection.limitBytes, _sfxsize_limit); \
             if (_sfxsize_limit < _final_sfxsize) { \
                 fprintf(stderr, "bad sfxsize limit\n"); \
                 return FAILURE; \
@@ -307,7 +321,7 @@ int _micro_init_sfxsize() {
         }
         memcpy((void *)&sfxsizeSection, LockResource(LoadResource(NULL, resource)), resourceSize);
         read_sfxsize_section(resourceSize);
-        dbgprintf("using resource: %d, %d\n", _final_sfxsize, _sfxsize_limit);
+        dbgprintf("using resource: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
         return SUCCESS;
     }
     dbgprintf("FindResourceA: %08x\n", GetLastError());
@@ -402,8 +416,8 @@ error:
             fprintf(stderr, "no __LINKEDIT segment found (corrupt micro sfx).\n");
             return FAILURE;
         }
-        _final_sfxsize = (linkedit->fileoff + linkedit->filesize) % 0xffffffff;
-        dbgprintf("no __DATA,__micro_sfxsize section found, use end of __LINKEDIT: %d\n", _final_sfxsize);
+        _final_sfxsize = linkedit->fileoff + linkedit->filesize;
+        dbgprintf("no __DATA,__micro_sfxsize section found, use end of __LINKEDIT: %zd\n", _final_sfxsize);
         return SUCCESS;
     }
 
@@ -412,7 +426,7 @@ error:
     }
     memcpy((void *)&sfxsizeSection, section, size);
     read_sfxsize_section(size);
-    dbgprintf("using __DATA,__micro_sfxsize section: %d, %d\n", _final_sfxsize, _sfxsize_limit);
+    dbgprintf("using __DATA,__micro_sfxsize section: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
 
     return SUCCESS;
 #elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -447,7 +461,7 @@ error:
     if (ehdr.e_shnum > 0) {
         dbgprintf("section headers: %d, offset %016lx\n", ehdr.e_shnum, (uint64_t)ehdr.e_shoff);
         update_sfxsize(ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf_Shdr));
-        dbgprintf("%d: sfxsize: %d\n", __LINE__, _final_sfxsize);
+        dbgprintf("%d: sfxsize: %zd\n", __LINE__, _final_sfxsize);
 
         shdrs = malloc(sizeof(Elf_Shdr) * ehdr.e_shnum);
         if (NULL == shdrs) {
@@ -490,7 +504,7 @@ error:
                 continue;
             }
             update_sfxsize(shdr->sh_offset + shdr->sh_size);
-            dbgprintf("%d: sfxsize: %d\n", __LINE__, _final_sfxsize);
+            dbgprintf("%d: sfxsize: %zd\n", __LINE__, _final_sfxsize);
             if (shdr->sh_name > strtabhdr->sh_size) {
                 errMsg = "bad section header name (corrupt micro sfx)";
                 goto error;
@@ -520,7 +534,7 @@ error:
             }
             read_sfxsize_section(shdr->sh_size);
             // at this time, things must be allocated
-            dbgprintf("using .sfxsize section: %d, %d\n", _final_sfxsize, _sfxsize_limit);
+            dbgprintf("using .sfxsize section: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
             close(fd);
             free(shdrs);
             free(strtab);
@@ -531,7 +545,7 @@ error:
     // try to get elf size
     // _final_sfxsize is now max section size
     update_sfxsize(ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf_Shdr));
-    dbgprintf("%d: sfxsize: %d\n", __LINE__, _final_sfxsize);
+    dbgprintf("%d: sfxsize: %zd\n", __LINE__, _final_sfxsize);
 
     phdrs = malloc(sizeof(Elf_Phdr) * ehdr.e_phnum);
     if (NULL == phdrs) {
@@ -572,6 +586,7 @@ error:
     }
     return SUCCESS;
 #endif
+#undef bytesntollh
 #undef read_sfxsize_section
 #undef update_sfxsize
 }

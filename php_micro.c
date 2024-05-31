@@ -503,8 +503,8 @@ int main(int argc, char *argv[])
     if (0 != (exit_status = micro_fileinfo_init())) {
         return exit_status;
     }
-    const int sfxsize = micro_get_sfxsize();
-    dbgprintf("myfinalsize is %d\n", sfxsize);
+    const size_t sfxsize = micro_get_sfxsize();
+    dbgprintf("my final sfxsize is %zd\n", sfxsize);
     zend_file_handle file_handle;
     const char *self_filename_mb = micro_get_filename();
     php_self = (char *)micro_get_filename();
@@ -620,8 +620,9 @@ int main(int argc, char *argv[])
         // omit PHP_BINARY constant
         // or let PHP_BINARY constant <- micro.php_binary if setted in ini
         zend_constant *pbconstant = NULL;
-        if (NULL != (pbconstant = 
-            (zend_constant *)zend_hash_str_find_ptr(EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY") - 1))) {
+        if (NULL !=
+            (pbconstant = (zend_constant *)zend_hash_str_find_ptr(
+                 EG(zend_constants), "PHP_BINARY", sizeof("PHP_BINARY") - 1))) {
             dbgprintf("remake pb constant %s\n", Z_STRVAL(pbconstant->value));
             zend_ini_entry *pbentry = NULL;
             if (NULL !=
@@ -661,7 +662,6 @@ int main(int argc, char *argv[])
         zend_interned_strings_switch_storage(1);
 
         FILE *fp = VCWD_FOPEN(self_filename_mb, "rb");
-        zend_fseek(fp, sfxsize, SEEK_SET);
 
         dbgprintf("fin opening self\n");
         if (!fp) {
@@ -719,9 +719,9 @@ int main(int argc, char *argv[])
 
 out:
     // frees here
-	if (file_handle.filename) {
-		zend_destroy_file_handle(&file_handle);
-	}
+    if (file_handle.filename) {
+        zend_destroy_file_handle(&file_handle);
+    }
     if (request_started) {
         dbgprintf("rshutdown\n");
         php_request_shutdown((void *)0);
