@@ -249,15 +249,15 @@ end:
  * ELF uses the end of the last section or last program header segment, this do not support UPX
  * Mach-O uses the end of __LINKEDIT
  * limit will be 0 (no limit)
-*/
+ */
 typedef struct _micro_sfxsize_section_t {
     /* sfx executable size in bytes, big endian */
     uint8_t sizeBytes[4];
     /**
-     * limit offset from the whole file begin 
+     * limit offset from the whole file begin
      * in bytes, big endian, maybe omit, omitted or 0 for no limit
      */
-    uint8_t limitBytes[4]; 
+    uint8_t limitBytes[4];
 } micro_sfxsize_section_t;
 
 /*
@@ -265,26 +265,28 @@ typedef struct _micro_sfxsize_section_t {
  */
 int _micro_init_sfxsize() {
     micro_sfxsize_section_t sfxsizeSection;
-#define read_sfxsize_section(size) do {\
-    if (size >= sizeof(uint32_t)) { \
-        _final_sfxsize = sfxsizeSection.sizeBytes[0] << 24 | sfxsizeSection.sizeBytes[1] << 16 | \
-            sfxsizeSection.sizeBytes[2] << 8 | sfxsizeSection.sizeBytes[3]; \
-    } else { \
-        fprintf(stderr, "bad sfxsize section\n"); \
-        return FAILURE; \
-    } \
-    if (size >= sizeof(uint32_t) + sizeof(uint32_t)) { \
-        _sfxsize_limit = sfxsizeSection.limitBytes[0] << 24 | sfxsizeSection.limitBytes[1] << 16 | \
-            sfxsizeSection.limitBytes[2] << 8 | sfxsizeSection.limitBytes[3]; \
-    } \
-} while (0)
-#define update_sfxsize(newEnd) do { \
-    _final_sfxsize = _final_sfxsize > newEnd ? _final_sfxsize : newEnd; \
-} while (0)
+#define read_sfxsize_section(size) \
+    do { \
+        if (size >= sizeof(uint32_t)) { \
+            _final_sfxsize = sfxsizeSection.sizeBytes[0] << 24 | sfxsizeSection.sizeBytes[1] << 16 | \
+                sfxsizeSection.sizeBytes[2] << 8 | sfxsizeSection.sizeBytes[3]; \
+        } else { \
+            fprintf(stderr, "bad sfxsize section\n"); \
+            return FAILURE; \
+        } \
+        if (size >= sizeof(uint32_t) + sizeof(uint32_t)) { \
+            _sfxsize_limit = sfxsizeSection.limitBytes[0] << 24 | sfxsizeSection.limitBytes[1] << 16 | \
+                sfxsizeSection.limitBytes[2] << 8 | sfxsizeSection.limitBytes[3]; \
+        } \
+    } while (0)
+#define update_sfxsize(newEnd) \
+    do { \
+        _final_sfxsize = _final_sfxsize > newEnd ? _final_sfxsize : newEnd; \
+    } while (0)
 
 #if defined(PHP_WIN32)
     // get resource
-    const char * errMsg = "";
+    const char *errMsg = "";
     DWORD resourceSize;
     HRSRC resource = FindResourceA(NULL, MAKEINTRESOURCEA(PHP_MICRO_SFXSIZE_ID), RT_RCDATA);
     HANDLE hFile = INVALID_HANDLE_VALUE;
@@ -338,19 +340,22 @@ int _micro_init_sfxsize() {
         goto error;
     }
 
-    if (
-        ntHeader.Signature != IMAGE_NT_SIGNATURE ||
+    if (ntHeader.Signature != IMAGE_NT_SIGNATURE ||
         ntHeader.FileHeader.SizeOfOptionalHeader < sizeof(IMAGE_OPTIONAL_HEADER32) ||
         ntHeader.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR_MAGIC ||
-        ntHeader.OptionalHeader.NumberOfRvaAndSizes != IMAGE_NUMBEROF_DIRECTORY_ENTRIES
-    ) {
+        ntHeader.OptionalHeader.NumberOfRvaAndSizes != IMAGE_NUMBEROF_DIRECTORY_ENTRIES) {
         errMsg = "bad nt header (corrupt micro sfx)";
         goto error;
     }
 
     sectionHeaders = malloc(sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections);
 
-    if (TRUE != ReadFile(hFile, sectionHeaders, sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections, &readBytes, NULL) ||
+    if (TRUE !=
+            ReadFile(hFile,
+                sectionHeaders,
+                sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections,
+                &readBytes,
+                NULL) ||
         sizeof(IMAGE_SECTION_HEADER) * ntHeader.FileHeader.NumberOfSections != readBytes) {
         dbgprintf("ReadFile: %08x\n", GetLastError());
         dbgprintf("section headers: %d\n", ntHeader.FileHeader.NumberOfSections);
@@ -363,7 +368,7 @@ int _micro_init_sfxsize() {
         update_sfxsize(sectionHeaders[i].PointerToRawData + sectionHeaders[i].SizeOfRawData);
     }
 
-    error:
+error:
     if (INVALID_HANDLE_VALUE != hFile) {
         CloseHandle(hFile);
     }
@@ -393,7 +398,7 @@ int _micro_init_sfxsize() {
         dbgprintf("no __DATA,__micro_sfxsize section found, use end of __LINKEDIT: %d\n", _final_sfxsize);
         return SUCCESS;
     }
-    
+
     memcpy((void *)&sfxsizeSection, section, size);
     read_sfxsize_section(size);
 
