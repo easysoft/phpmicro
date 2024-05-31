@@ -355,6 +355,9 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_sfxsize, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_micro_get_sfxsize_limit, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO(arginfo_micro_get_self_filename, 0)
 ZEND_END_ARG_INFO()
 
@@ -364,7 +367,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_micro_open_self, 0)
 ZEND_END_ARG_INFO()
 
-// clang-format off
+    // clang-format off
 
 #ifdef PHP_WIN32
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_realloc_console, 0, 0, _IS_BOOL, 0)
@@ -387,6 +390,7 @@ static const zend_function_entry additional_functions[] = {
     // micro sapi functions
     PHP_FE(micro_get_sfx_filesize, arginfo_micro_get_sfx_filesize)
     PHP_FE(micro_get_sfxsize, arginfo_micro_get_sfxsize)
+    PHP_FE(micro_get_sfxsize_limit, arginfo_micro_get_sfxsize_limit)
     PHP_FE(micro_get_self_filename, arginfo_micro_get_self_filename)
     PHP_FE(micro_version, arginfo_micro_version)
     PHP_FE(micro_open_self, arginfo_micro_open_self)

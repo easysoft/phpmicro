@@ -93,6 +93,13 @@ PHPAPI PHP_FUNCTION(micro_get_sfx_filesize);
 PHPAPI PHP_FUNCTION(micro_get_sfxsize);
 
 /*
+ *   zif_micro_get_sfxsize_limit
+ *	micro_get_sfxsize_limit() -> int
+ * 	get sfx size in bytes
+ */
+PHPAPI PHP_FUNCTION(micro_get_sfxsize_limit);
+
+/*
  *   zif_micro_get_self_filename
  *	micro_get_self_filename() -> string
  * 	get self absolute file path
