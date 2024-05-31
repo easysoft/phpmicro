@@ -264,7 +264,7 @@ typedef struct _micro_sfxsize_section_t {
  *   _micro_get_sfxsize - get (real) sfx size using platform-specific method (see above)
  */
 int _micro_init_sfxsize() {
-    micro_sfxsize_section_t sfxsizeSection;
+    micro_sfxsize_section_t sfxsizeSection = {{0}, {0}};
 #define read_sfxsize_section(size) \
     do { \
         if (size >= sizeof(uint32_t)) { \
@@ -277,6 +277,10 @@ int _micro_init_sfxsize() {
         if (size >= sizeof(uint32_t) + sizeof(uint32_t)) { \
             _sfxsize_limit = sfxsizeSection.limitBytes[0] << 24 | sfxsizeSection.limitBytes[1] << 16 | \
                 sfxsizeSection.limitBytes[2] << 8 | sfxsizeSection.limitBytes[3]; \
+            if (_sfxsize_limit < _final_sfxsize) { \
+                fprintf(stderr, "bad sfxsize limit\n"); \
+                return FAILURE; \
+            } \
         } \
     } while (0)
 #define update_sfxsize(newEnd) \
@@ -435,7 +439,7 @@ error:
     if (ehdr.e_shnum > 0) {
         dbgprintf("section headers: %d, offset %016lx\n", ehdr.e_shnum, (uint64_t)ehdr.e_shoff);
         update_sfxsize(ehdr.e_shoff + ehdr.e_shnum * sizeof(Elf_Shdr));
-        dbgprintf("%d: sfxsize: %d\n", __LINE__, _sfxsize);
+        dbgprintf("%d: sfxsize: %d\n", __LINE__, _final_sfxsize);
 
         shdrs = malloc(sizeof(Elf_Shdr) * ehdr.e_shnum);
         if (NULL == shdrs) {

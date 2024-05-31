@@ -89,9 +89,6 @@ typedef struct _micro_php_stream_ops {
 static ssize_t micro_plain_files_write(php_stream *stream, const char *buf, size_t count) {
     ret_orig(ssize_t, write, stream, with_args(buf, count));
 }
-static ssize_t micro_plain_files_read(php_stream *stream, char *buf, size_t count) {
-    ret_orig(ssize_t, read, stream, with_args(buf, count));
-}
 static int micro_plain_files_flush(php_stream *stream) {
     ret_orig(int, flush, stream, nope);
 }
@@ -114,15 +111,34 @@ static int micro_plain_files_stat(php_stream *stream, php_stream_statbuf *ssb) {
  */
 static int micro_plain_files_set_option(php_stream *stream, int option, int value, void *ptrparam) {
     void *myptrparam = ptrparam;
+    size_t limit;
 
     if (option == PHP_STREAM_OPTION_MMAP_API && value == PHP_STREAM_MMAP_MAP_RANGE) {
-        dbgprintf("trying mmap, let us mask it!\n");
+        dbgprintf("trying mmap self, let us mask it!\n");
         php_stream_mmap_range *range = myptrparam;
         if (PHP_STREAM_MAP_MODE_READWRITE == range->mode || PHP_STREAM_MAP_MODE_SHARED_READWRITE == range->mode) {
             // self should not be writeable
             return PHP_STREAM_OPTION_RETURN_ERR;
         }
         range->offset = range->offset + micro_get_sfxsize();
+        /**
+         * linux mmap(2) manpage said:
+         * EOVERFLOW
+         *     The file is a regular file and 
+         *     the value of off plus len exceeds the offset maximum established in the open file description
+         *     associated with fildes.
+         * 
+         */
+        if ((limit = micro_get_sfxsize_limit()) != 0) {
+            if (range->offset + range->length > limit) {
+#ifdef EOVERFLOW // is this necessary?
+                errno = EOVERFLOW;
+#else
+                errno = EINVAL;
+#endif // EOVERFLOW
+                return PHP_STREAM_OPTION_RETURN_ERR;
+            }
+        }
     }
     orig_ops(myops, stream);
     int ret = stream->ops->set_option(stream, option, value, myptrparam);
@@ -135,26 +151,60 @@ static int micro_plain_files_set_option(php_stream *stream, int option, int valu
  */
 static int micro_plain_files_seek_with_offset(
     php_stream *stream, zend_off_t offset, int whence, zend_off_t *newoffset) {
-    dbgprintf("seeking %zd with offset %d whence %d\n", offset, micro_get_sfxsize(), whence);
+    dbgprintf("seeking %zd with sfxsize %d limit %d whence %d\n",
+        offset, micro_get_sfxsize(), micro_get_sfxsize_limit(), whence);
     int ret = -1;
-    zend_off_t realoffset;
+    zend_off_t want_offset, real_offset;
+    zend_off_t sfxsize, limit;
+
+    sfxsize = micro_get_sfxsize();
+    limit = micro_get_sfxsize_limit();
 
     orig_ops(myops, stream);
-    if (SEEK_SET == whence) {
-        ret = stream->ops->seek(stream, offset + micro_get_sfxsize(), whence, &realoffset);
-    } else {
-        ret = stream->ops->seek(stream, offset, whence, &realoffset);
+    switch(whence) {
+        case SEEK_SET:
+            want_offset = offset + sfxsize;
+            break;
+        case SEEK_CUR:
+            ret = stream->ops->seek(stream, 0, SEEK_CUR, &want_offset);
+            if (-1 == ret) {
+                goto error;
+            }
+            want_offset += offset;
+            break;
+        case SEEK_END:
+            if (0 == limit) {
+                ret = stream->ops->seek(stream, 0, SEEK_END, &limit);
+                if (-1 == ret) {
+                    goto error;
+                }
+            }
+            want_offset = limit + offset;
+            break;
     }
-    ours_ops(stream);
+    dbgprintf("want offset: %zd\n", want_offset);
+
+    if (want_offset < sfxsize) {
+        // seek before start
+        goto error;
+    }
+
+    ret = stream->ops->seek(stream, want_offset, SEEK_SET, &real_offset);
     if (-1 == ret) {
-        return -1;
-    }
-    if (realoffset < micro_get_sfxsize()) {
         php_error_docref(NULL, E_WARNING, "Seek on self stream failed");
-        return -1;
+        goto error;
     }
-    *newoffset = realoffset - micro_get_sfxsize();
-    return ret;
+
+    ours_ops(stream);
+
+    *newoffset = real_offset - sfxsize;
+
+    dbgprintf("new offset: %zd\n", *newoffset);
+    return 0;
+    error:
+    ours_ops(stream);
+    // php_error_docref(NULL, E_WARNING, "Seek on self stream failed");
+    return -1;
 }
 
 /*
@@ -162,6 +212,7 @@ static int micro_plain_files_seek_with_offset(
  */
 static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_statbuf *ssb) {
     int ret = -1;
+    uint32_t limit = 0;
 
     orig_ops(myops, stream);
     ret = stream->ops->stat(stream, ssb);
@@ -169,8 +220,40 @@ static int micro_plain_files_stat_with_offset(php_stream *stream, php_stream_sta
     if (-1 == ret) {
         return -1;
     }
-    dbgprintf("stating withoffset %zd -> %zd\n", ssb->sb.st_size, ssb->sb.st_size - micro_get_sfxsize());
-    ssb->sb.st_size -= micro_get_sfxsize();
+
+    dbgprintf("stating real size %zd\n", ssb->sb.st_size);
+    if ((limit = micro_get_sfxsize_limit()) > 0) {
+        ssb->sb.st_size = limit - micro_get_sfxsize();
+    } else {
+        ssb->sb.st_size -= micro_get_sfxsize();
+    }
+    dbgprintf("stating with offset %zd\n", ssb->sb.st_size);
+    return ret;
+}
+
+/*
+ * micro_plain_files_read_with_offset - php_stream read op with offset
+ */
+static ssize_t micro_plain_files_read_with_offset(php_stream *stream, char *buf, size_t count) {
+    ssize_t ret = -1;
+    zend_off_t current;
+    size_t limit;
+
+    orig_ops(myops, stream);
+    ret = stream->ops->seek(stream, 0, SEEK_CUR, &current);
+    if (-1 == ret || current < 0) {
+        ret = -1;
+        goto error;
+    }
+
+    if ((limit = micro_get_sfxsize_limit()) > 0) {
+        if (((size_t)current) + count > limit) {
+            count = limit - current;
+        }
+    }
+    ret = stream->ops->read(stream, buf, count);
+    error:
+    ours_ops(stream);
     return ret;
 }
 
@@ -210,7 +293,7 @@ static inline int micro_modify_ops_with_offset(php_stream *ps, int mod_stat) {
                                       : (0 == mod_stat ? micro_plain_files_stat : micro_plain_files_stat_with_offset),
         // set proxies
         .write = micro_plain_files_write,
-        .read = micro_plain_files_read,
+        .read = micro_plain_files_read_with_offset,
         .flush = micro_plain_files_flush,
         .cast = NULL == ps->ops->cast ? NULL : micro_plain_files_cast,
         .set_option = NULL == ps->ops->set_option ? NULL : micro_plain_files_set_option,
