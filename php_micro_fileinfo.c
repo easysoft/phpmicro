@@ -27,11 +27,13 @@ limitations under the License.
 #if defined(PHP_WIN32)
 #    include "win32/codepage.h"
 #    include <windows.h>
-#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
-// all the things linux used should also work for other unix-like using ELF,
-// but not well tested
+#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #    include <elf.h>
-#    include <sys/auxv.h>
+#    if defined(__linux) || defined(__FreeBSD__)
+#        include <sys/auxv.h> // for getauxval / elf_aux_info
+#    else
+#        include <sys/sysctl.h> // for sysctl
+#    endif                      // defined(__linux) || defined(__FreeBSD__)
 #    if defined(__LP64__)
 typedef Elf64_Ehdr Elf_Ehdr;
 typedef Elf64_Shdr Elf_Shdr;
@@ -428,7 +430,7 @@ error:
     dbgprintf("using __DATA,__micro_sfxsize section: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
 
     return SUCCESS;
-#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
     // get section header
     Elf_Ehdr ehdr;
     Elf_Shdr *shdrs = NULL, *shdr, *strtabhdr;
@@ -682,7 +684,8 @@ const char *micro_get_filename(void) {
     return self_filename;
 }
 
-#elif defined(__linux) || defined(__NetBSD__) || defined(__OpenBSD__)
+#elif defined(__linux)
+// use getauxval AT_EXECFN
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
@@ -692,6 +695,7 @@ const char *micro_get_filename(void) {
     return self_filename;
 }
 #elif defined(__FreeBSD__)
+// use elf_aux_info AT_EXECPATH
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     char filename[PATH_MAX];
@@ -701,6 +705,66 @@ const char *micro_get_filename(void) {
             return NULL;
         }
         (void)realpath((const char *)filename, self_filename);
+    }
+    return self_filename;
+}
+#elif defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+// use sysctl
+const char *micro_get_filename(void) {
+    static char *self_filename = NULL;
+    int mib[4];
+    size_t len;
+    char *buf;
+    if (NULL == self_filename) {
+        self_filename = malloc(PATH_MAX);
+#    if defined(__NetBSD__) && defined(KERN_PROC_PATHNAME)
+        mib[0] = CTL_KERN;
+        mib[1] = KERN_PROC_ARGS;
+        mib[2] = getpid();
+        mib[3] = KERN_PROC_PATHNAME;
+#    elif defined(__DragonFly__)
+        mib[0] = CTL_KERN;
+        mib[1] = KERN_PROC;
+        mib[2] = KERN_PROC_PATHNAME;
+        mib[3] = -1;
+#    else // openbsd or netbsd without KERN_PROC_PATHNAME
+        // fall back to argv[0], this is fragile
+        // if
+        //    - argv is changed
+        //    - parent sets argv[0] to another value
+        //    - called in $PATH
+        // there will be a wrong value
+        // so if you understand this limit, comment the following line
+#        error "not support this system yet"
+        mib[0] = CTL_KERN;
+        mib[1] = KERN_PROC_ARGS;
+        mib[2] = getpid();
+        mib[3] = KERN_PROC_ARGV;
+#    endif
+
+        if (sysctl(mib, 4, NULL, &len, NULL, 0) != 0) {
+            return NULL;
+        }
+
+        buf = malloc(len);
+        if (NULL == buf) {
+            // impossible
+            return NULL;
+        }
+
+        if (sysctl(mib, 4, buf, &len, NULL, 0) != 0) {
+            free(buf);
+            return NULL;
+        }
+
+#    if (defined(__NetBSD__) && defined(KERN_PROC_PATHNAME)) || defined(__DragonFly__)
+        (void)realpath(buf, self_filename);
+#    elif defined(__OpenBSD__)
+        (void)realpath(((char **)buf)[0], self_filename);
+#    else
+#        error "not support this system yet"
+#    endif
+        free(buf);
     }
     return self_filename;
 }
