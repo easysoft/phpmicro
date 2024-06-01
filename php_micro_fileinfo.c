@@ -272,7 +272,7 @@ typedef struct _micro_sfxsize_section_t {
 /*
  *   _micro_get_sfxsize - get (real) sfx size using platform-specific method (see above)
  */
-int _micro_init_sfxsize() {
+int _micro_init_sfxsize(void) {
     micro_sfxsize_section_t sfxsizeSection = {{0}, {0}};
 #define bytesntollh(bytes, ll) \
     do { \
@@ -682,12 +682,25 @@ const char *micro_get_filename(void) {
     return self_filename;
 }
 
-#elif defined(__linux) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
+#elif defined(__linux) || defined(__NetBSD__) || defined(__OpenBSD__)
 const char *micro_get_filename(void) {
     static char *self_filename = NULL;
     if (NULL == self_filename) {
         self_filename = malloc(PATH_MAX);
         (void)realpath((const char *)getauxval(AT_EXECFN), self_filename);
+    }
+    return self_filename;
+}
+#elif defined(__FreeBSD__)
+const char *micro_get_filename(void) {
+    static char *self_filename = NULL;
+    char filename[PATH_MAX];
+    if (NULL == self_filename) {
+        self_filename = malloc(PATH_MAX);
+        if (0 != elf_aux_info(AT_EXECPATH, filename, sizeof(filename))) {
+            return NULL;
+        }
+        (void)realpath((const char *)filename, self_filename);
     }
     return self_filename;
 }
