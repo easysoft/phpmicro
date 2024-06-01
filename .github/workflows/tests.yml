@@ -52,6 +52,11 @@ jobs:
       max-parallel: 3
       fail-fast: false
     steps:
+      - name: Disable autocrlf
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       - name: Checkout PHP
         uses: actions/checkout@v4
         with:
