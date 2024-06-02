@@ -3,7 +3,7 @@
 
 名称 Name | 平台 Platform | 可选? Optional? | 用途 Usage
 --- | --- | --- | ---
-phar.patch | * | 可选 Optional | 允许micro使用压缩phar Allow micro use compressed phar
+phar_\<php version\>.patch | * | 可选 Optional | 允许micro使用压缩phar Allow micro use compressed phar
 static_opcache_\<php version\>.patch | * | 可选 Optional | 支持静态构建opcache Support build opcache statically
 macos_iconv.patch | macOS | 可选 Optional | 支持链接到系统的iconv Support link against system iconv
 static_extensions_win32_\<php version\>.patch | Windows | 可选 Optional | 支持静态构建Windows其他扩展 Support build other extensions for windows
