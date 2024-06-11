@@ -102,7 +102,11 @@ fclose($selffile);
 
 chmod("phartest.exe", 0755);
 
-passthru("./phartest.exe", $ret);
+if (PHP_OS_FAMILY === 'Windows') {
+    passthru('.\phartest.exe', $ret);
+} else {
+    passthru("./phartest.exe", $ret);
+}
 if ($ret !== 0) {
     echo "Failed to execute phar\n";
     exit(1);
