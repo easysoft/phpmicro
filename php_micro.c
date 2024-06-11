@@ -658,10 +658,10 @@ int main(int argc, char *argv[])
         zend_interned_strings_switch_storage(0);
         // hook at here for some extensions that will register proto
         // TODO: zip
-        if (SUCCESS != (exit_status = micro_reregister_proto("phar"))) {
-            // if hook failed, go error
-            goto out;
-        }
+        // if (SUCCESS != (exit_status = micro_reregister_proto("phar"))) {
+        //     // if hook failed, go error
+        //     goto out;
+        // }
         // switch back
         zend_interned_strings_switch_storage(1);
 
@@ -739,7 +739,7 @@ out:
     if (ini_entries) {
         free(ini_entries);
     }
-    micro_free_reregistered_protos();
+    // micro_free_reregistered_protos();
     if (module_started) {
         dbgprintf("mshutdown\n");
         php_module_shutdown();
