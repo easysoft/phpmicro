@@ -82,7 +82,7 @@ jobs:
         run: |
           $patchVer = "${{ matrix.patch }}"
           $series = '84', '83', '82', '81', '80'
-          $patches = 'cli_checks', 'vcruntime140', 'win32', 'zend_stream'
+          $patches = 'cli_checks', 'vcruntime140', 'win32', 'zend_stream', 'phar', 'comctl32', 'static_opcache', 'static_extensions_win32'
           foreach ( $patch in $patches )
           {
             $path = "sapi/micro/patches/${patch}.patch"
@@ -113,6 +113,7 @@ jobs:
             --disable-all ^
             --enable-micro ^
             --disable-zts ^
+            --enable-opcache ^
             --enable-ctype ^
             --enable-filter ^
             --enable-mbstring ^
@@ -161,7 +162,7 @@ jobs:
         working-directory: php-src
         run: |
           patchVer="${{ matrix.patch }}"
-          for patch in 'cli_checks' 'disable_huge_page'
+          for patch in 'cli_checks' 'disable_huge_page' 'phar' 'static_opcache'
           do
             path="sapi/micro/patches/${patch}.patch"
             if [ -f $path ]
@@ -201,6 +202,7 @@ jobs:
             --disable-cli \
             --enable-micro \
             --disable-phpdbg \
+            --enable-opcache \
             --without-pear \
             --disable-shared \
             --enable-static \
@@ -266,7 +268,7 @@ jobs:
         working-directory: php-src
         run: |
           patchVer="${{ matrix.patch }}"
-          for patch in 'cli_checks' 'disable_huge_page'
+          for patch in 'cli_checks' 'disable_huge_page' 'phar' 'static_opcache'
           do
             path="sapi/micro/patches/${patch}.patch"
             if [ -f $path ]
@@ -307,6 +309,7 @@ jobs:
             --enable-micro \
             --disable-phpdbg \
             --without-pear \
+            --enable-opcache \
             --disable-shared \
             --enable-static \
             --disable-dom \
