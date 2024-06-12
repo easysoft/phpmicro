@@ -7,11 +7,11 @@
 
 micro自执行SAPI提供了php“自执行文件”的可能性
 
-你只需要将构建的micro.sfx文件与任意php文件或者phar包拼接（cat或者copy /b）为一个文件就可以直接执行这个php文件
+你只需要将构建的micro.sfx文件与任意php文件或者phar包拼接（`cat`或者`copy /b`）为一个文件就可以直接执行这个php文件
 
 ## 兼容性
 
-目前兼容PHP8+；兼容Windows、Linux、macOS。
+目前兼容PHP8+；兼容Windows、Linux、macOS （可能也支持一些BSDs）。
 
 ## 获取与使用
 

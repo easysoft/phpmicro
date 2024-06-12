@@ -7,11 +7,11 @@
 
 micro self-executable SAPI makes PHP self-executable.
 
-Just concatenate micro.sfx and random php source file or phar into a single file to use it.
+Just concatenate micro.sfx and a random PHP source file or PHAR into a single file to use it.
 
 ## Compatibility
 
-Yet only support PHP8+; Windows, Linux, macOS.
+Currently, it only supports PHP8+ on Windows, Linux, and macOS (and maybe some BSDs).
 
 ## Fetch and Usage
 
@@ -98,7 +98,7 @@ Options for reference:
 
 `--disable-phpdbg --disable-cgi --disable-cli --disable-all --enable-micro --enable-phar --with-ffi --enable-zlib`
 
-At Linux libc compatibility can be a problem, micro provides two kinds of `configure` arguments:
+On Linux, libc compatibility can be a problem. To address this, micro provides two kinds of `configure` arguments:
 
 - `--enable-micro=yes`or`--enable-micro`: this will make PIE shared ELF micro sfx, this kind of binary cannot be invoked cross libc (i.e. you cannot run such a binary which was built on alpine with musl on any glibc-based CentOS), but the binary can do ffi and PHP `dl()` function.
 - `--enable-micro=all-static`: this will make full static ELF micro sfx, this kind of binary can even run barely on top of any linux kernel, but ffi/`dl()` is not supported.
@@ -110,13 +110,13 @@ At Linux libc compatibility can be a problem, micro provides two kinds of `confi
 make micro
 ```
 
-(`make all`(aka. `make`) may work also, but build only the micro SAPI is recommended.)
+(`make all`(aka. `make`) may work also, but it is recommended to only build the micro SAPI.)
 
 The built file will be located at sapi/micro/micro.sfx.
 
 ### Windows Build
 
-0.Prepare the build environment according to [the official PHP documents](https://wiki.php.net/internals/windows/stepbystepbuild_sdk_2).
+0.Prepare the build environment according to [the official PHP documents](https://wiki.php.net/internals/windows/stepbystepbuild_sdk_2), you may also try [my scripts](https://github.com/dixyes/php-dev-windows-tool)
 
 1.buildconf
 
@@ -137,7 +137,7 @@ Options for reference:
 `--disable-all --disable-zts --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
-Due to PHP build system on Windows lack of the ability to statically build PHP binary, you cannot build micro with `nmake`
+Due to the PHP build system's inability to statically build PHP binaries on Windows, you cannot build micro with `nmake` command.
 
 ```batch
 # at PHP source dir
@@ -148,9 +148,9 @@ That built file is at `<arch name like x64>\\<configuration like Release>\\micro
 
 ## Optimizations
 
-Hugepages optimization for Linux in the PHP build system results in a huge size of sfx, if you do not take advantage of hugepages, use `disable_huge_page.patch` to shrink the sfx size.
+The Hugepages optimization for Linux in the PHP build system results in a large sfx size. If you do not take advantage of Hugepages, use `disable_huge_page.patch` to reduce the sfx size.
 
-Statically build under Linux needs libc, the most common glibc may be large, musl is recommended instead. manually installed musl or some distros provided musl will provide `musl-gcc` or `musl-clang` wrapper, use one of them before configure by specify CC/CXX environs, for example
+A static build under Linux requires libc. The most common libc, glibc, may be large, so musl is recommended instead. Manually installed musl or some distros provided musl will provide `musl-gcc` or `musl-clang` wrapper, use one of them before configure by specify CC/CXX environs, for example
 
 ```bash
 # ./buildconf things...
@@ -160,7 +160,7 @@ export CXX=musl-gcc
 # make things
 ```
 
-We hope all dependencies are statically linked into sfx. However, some distro does not provide static versions of them. We may manually build them.
+We aim to have all dependencies statically linked into sfx. However, some distro does not provide static versions of them. We may manually build them.
 
 libffi for example (note that the ffi extension is not supported in `all-static` builds):
 
@@ -201,7 +201,7 @@ See wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings
 
 ### PHP_BINARY constant
 
-In micro, `PHP_BINARY` is an empty string. You can modify it using an ini setting: `micro.php_binary=somestring`
+In micro, the `PHP_BINARY` constant is an empty string. You can modify it using an ini setting: `micro.php_binary=somestring`
 
 ## OSS License
 
