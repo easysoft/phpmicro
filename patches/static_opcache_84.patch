@@ -81,6 +81,27 @@ index 24b4acaabc..452d57cc7d 100644
  
  	if (PHP_OPCACHE_JIT == "yes") {
  		if (CHECK_HEADER_ADD_INCLUDE("ir/ir.h", "CFLAGS_OPCACHE", PHP_OPCACHE + ";ext\\opcache\\jit")) {
+diff --git a/ext/opcache/jit/ir/ir_gdb.c b/ext/opcache/jit/ir/ir_gdb.c
+index cf3a507d25..e679a8a55d 100644
+--- a/ext/opcache/jit/ir/ir_gdb.c
++++ b/ext/opcache/jit/ir/ir_gdb.c
+@@ -500,14 +500,14 @@ typedef struct _ir_gdbjit_descriptor {
+ 	struct _ir_gdbjit_code_entry *first_entry;
+ } ir_gdbjit_descriptor;
+ 
+-ir_gdbjit_descriptor __jit_debug_descriptor = {
++static ir_gdbjit_descriptor __jit_debug_descriptor = {
+ 	1, IR_GDBJIT_NOACTION, NULL, NULL
+ };
+ 
+ #ifdef IR_EXTERNAL_GDB_ENTRY
+ void __jit_debug_register_code(void);
+ #else
+-IR_NEVER_INLINE void __jit_debug_register_code(void)
++static IR_NEVER_INLINE void __jit_debug_register_code(void)
+ {
+ 	__asm__ __volatile__("");
+ }
 diff --git a/main/main.c b/main/main.c
 index a3acaf94b7..a1324aab51 100644
 --- a/main/main.c
