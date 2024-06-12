@@ -95,7 +95,7 @@ patch -p1 < sapi/micro/patches/<name of patch>
 
 `--disable-phpdbg --disable-cgi --disable-cli --disable-all --enable-micro --enable-phar --with-ffi --enable-zlib`
 
-Linux下，存在C库兼容性问题，micro构建系统提供了两种选项：
+Linux下，存在C库兼容性问题，对于这个，micro构建系统提供了两种选项：
 
 - `--enable-micro=yes`或者`--enable-micro`：这将会构建PIE的动态的micro，这种micro不能跨C库调用（即在alpine上构建的使用musl的micro不能在只安装了glibc的CentOS上使用，反过来也不能），但支持ffi和PHP的`dl()`函数。
 - `--enable-micro=all-static`：这将会构建静态的micro，这种micro不依赖C库，可以直接跑在支持的Linux内核上，但不能使用ffi/`dl()`
@@ -113,7 +113,7 @@ make micro
 
 ### Windows 构建
 
-0.参考官方构建说明准备PHP构建环境
+0.参考[官方构建说明](https://wiki.php.net/internals/windows/stepbystepbuild_sdk_2)准备PHP构建环境，或者用[我的脚本](https://github.com/dixyes/php-dev-windows-tool)准备一下
 
 1.buildconf
 
@@ -134,7 +134,7 @@ configure <options>
 `--disable-all --disable-zts --enable-micro --enable-phar --with-ffi --enable-zlib`
 
 3.make
-由于构建系统的实现问题， Windows下不能使用nmake命令直接构建，使用nmake micro来构建
+由于构建系统的实现问题， Windows下不能使用nmake命令直接构建，使用nmake micro来构建<!--TODO: 现在可以了，抽空改了-->
 
 ```batch
 # 在php源码目录下
