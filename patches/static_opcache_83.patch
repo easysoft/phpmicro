@@ -45,27 +45,28 @@ diff --git a/ext/opcache/config.m4 b/ext/opcache/config.m4
 index 2a83fa2455..7b3b37182e 100644
 --- a/ext/opcache/config.m4
 +++ b/ext/opcache/config.m4
-@@ -21,7 +21,8 @@ PHP_ARG_ENABLE([opcache-jit],
+@@ -27,7 +27,8 @@
  if test "$PHP_OPCACHE" != "no"; then
- 
+
    dnl Always build as shared extension
 -  ext_shared=yes
 +  dnl why?
 +  dnl ext_shared=yes
- 
+
    if test "$PHP_HUGE_CODE_PAGES" = "yes"; then
      AC_DEFINE(HAVE_HUGE_CODE_PAGES, 1, [Define to enable copying PHP CODE pages into HUGE PAGES (experimental)])
-@@ -327,7 +328,9 @@ int main() {
- 	shared_alloc_mmap.c \
- 	shared_alloc_posix.c \
- 	$ZEND_JIT_SRC,
--	shared,,"-Wno-implicit-fallthrough -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1",,yes)
-+	$ext_shared,,"-Wno-implicit-fallthrough -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1",,yes)
+@@ -319,8 +320,10 @@
+	shared_alloc_mmap.c \
+	shared_alloc_posix.c \
+	$ZEND_JIT_SRC,
+-	shared,,"$PHP_OPCACHE_CFLAGS -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1",,yes)
++	$ext_shared,,"$PHP_OPCACHE_CFLAGS -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1",,yes)
+
++  AC_DEFINE(HAVE_OPCACHE, 1, [opcache enabled])
 +
-+	AC_DEFINE(HAVE_OPCACHE, 1, [opcache enabled])
- 
    PHP_ADD_EXTENSION_DEP(opcache, pcre)
- 
+
+   if test "$have_shm_ipc" != "yes" && test "$have_shm_mmap_posix" != "yes" && test "$have_shm_mmap_anon" != "yes"; then
 diff --git a/ext/opcache/config.w32 b/ext/opcache/config.w32
 index 764a2edaab..95427090ce 100644
 --- a/ext/opcache/config.w32
