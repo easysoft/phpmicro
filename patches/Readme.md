@@ -44,6 +44,10 @@ Patch file name is \<name\>.patch or \<name\>_\<version\>.patch. If there is no 
 
 Choose the latest patch that is equal to or lower than the PHP version you want to patch. For example, if you want to patch PHP 8.2, and there are patches 80 81 84, choose 81.
 
+所有的补丁都是给最新的修正版本使用的
+
+All patches are applied to the latest patch version of its minor version.
+
 ## Something special
 
 ### phar.patch
@@ -65,6 +69,10 @@ This patch can only be used with micro, as it causes other SAPIs to fail to buil
 静态链接opcache到PHP里，可以在其他的SAPI上用
 
 This makes opcache statically linked into PHP, and it can be used for other SAPIs.
+
+PHP 8.3.11， 8.2.23中，opcache的config.m4发生了[变动](https://github.com/php/php-src/commit/d20d11375fa602236e1fb828f6a2236b19b43cdc)，这个patch对应变动后的版本
+
+The opcache's config.m4 has [changed](https://github.com/php/php-src/commit/d20d11375fa602236e1fb828f6a2236b19b43cdc) in PHP 8.3.11 and 8.2.23, and this patch corresponds to the updated version.
 
 ### cli_checks
 
