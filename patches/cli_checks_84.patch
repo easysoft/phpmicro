@@ -64,19 +64,6 @@ index 8d45b2ae41..35e9403a31 100644
  		  || strcmp(sapi_module.name, "phpdbg") == 0);
  
  		if (!sapi_requires_preload_user) {
-diff --git a/ext/pcre/php_pcre.c b/ext/pcre/php_pcre.c
-index ac0ad2c378..ac1381a4ee 100644
---- a/ext/pcre/php_pcre.c
-+++ b/ext/pcre/php_pcre.c
-@@ -305,7 +305,7 @@ static PHP_GINIT_FUNCTION(pcre) /* {{{ */
- 
- 	/* If we're on the CLI SAPI, there will only be one request, so we don't need the
- 	 * cache to survive after RSHUTDOWN. */
--	pcre_globals->per_request_cache = strcmp(sapi_module.name, "cli") == 0;
-+	pcre_globals->per_request_cache = strcmp(sapi_module.name, "cli") == 0 || strcmp(sapi_module.name, "micro") == 0;
- 	if (!pcre_globals->per_request_cache) {
- 		zend_hash_init(&pcre_globals->pcre_cache, 0, NULL, php_free_pcre_cache, 1);
- 	}
 diff --git a/ext/pdo_sqlite/pdo_sqlite.c b/ext/pdo_sqlite/pdo_sqlite.c
 index 49a477998b..18fe71cce4 100644
 --- a/ext/pdo_sqlite/pdo_sqlite.c
