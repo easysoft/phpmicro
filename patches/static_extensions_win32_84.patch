@@ -11,21 +11,23 @@ index c7d897c1ca..d6f7cec5e2 100644
  	ADD_SOURCES(configure_module_dirname + '\\libmagic', LIBMAGIC_SOURCES, "fileinfo");
  }
 diff --git a/ext/openssl/config.w32 b/ext/openssl/config.w32
-index 76e3079e50..b6fd2c7755 100644
+index 24064ec2a5..87ff31618c 100644
 --- a/ext/openssl/config.w32
 +++ b/ext/openssl/config.w32
-@@ -1,12 +1,12 @@
+@@ -1,6 +1,6 @@
  // vim:ft=javascript
  
 -ARG_WITH("openssl", "OpenSSL support", "no,shared");
 +ARG_WITH("openssl", "OpenSSL support", "no");
  
- if (PHP_OPENSSL != "no") {
+ ARG_WITH("openssl-legacy-provider", "OPENSSL: Load legacy algorithm provider in addition to default provider", "no");
+ 
+@@ -10,7 +10,7 @@ if (PHP_OPENSSL != "no") {
  	var ret = SETUP_OPENSSL("openssl", PHP_OPENSSL);
  
- 	if (ret > 0) {
--		EXTENSION("openssl", "openssl.c xp_ssl.c");
-+		EXTENSION("openssl", "openssl.c xp_ssl.c", PHP_OPENSSL_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
- 		AC_DEFINE("HAVE_OPENSSL_EXT", 1, "Define to 1 if the openssl extension is available.");
- 	}
- }
+ 	if (ret >= 2) {
+-		EXTENSION("openssl", "openssl.c openssl_pwhash.c xp_ssl.c");
++		EXTENSION("openssl", "openssl.c openssl_pwhash.c xp_ssl.c", PHP_OPENSSL_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
+ 		AC_DEFINE("HAVE_OPENSSL_EXT", 1, "Define to 1 if the PHP extension 'openssl' is available.");
+ 		if (PHP_OPENSSL_LEGACY_PROVIDER != "no") {
+ 			AC_DEFINE("LOAD_OPENSSL_LEGACY_PROVIDER", 1, "Define to 1 to load the OpenSSL legacy algorithm provider in addition to the default provider.");
