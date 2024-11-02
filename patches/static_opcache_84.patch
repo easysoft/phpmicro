@@ -1,5 +1,5 @@
 diff --git a/build/order_by_dep.awk b/build/order_by_dep.awk
-index 1e71ea2069..3da32d8830 100644
+index 1e71ea20..3da32d88 100644
 --- a/build/order_by_dep.awk
 +++ b/build/order_by_dep.awk
 @@ -37,6 +37,11 @@ function get_module_index(name,  i)
@@ -12,27 +12,27 @@ index 1e71ea2069..3da32d8830 100644
 +		return;
 +	}
  	mod_name_len = length(module_name);
- 
+
  	for (ext in mod_deps) {
 diff --git a/ext/opcache/ZendAccelerator.c b/ext/opcache/ZendAccelerator.c
-index 8d45b2ae41..a7cc9abbb8 100644
+index 3e8bdea9..4a784945 100644
 --- a/ext/opcache/ZendAccelerator.c
 +++ b/ext/opcache/ZendAccelerator.c
-@@ -93,7 +93,10 @@ typedef int gid_t;
+@@ -97,7 +97,10 @@ typedef int gid_t;
  #include <immintrin.h>
  #endif
- 
+
 +#ifdef COMPILE_DL_OPCACHE
-+// avoid symbol conflict
++// micro: avoid symbol conflict
  ZEND_EXTENSION();
 +#endif
- 
+
  #ifndef ZTS
  zend_accel_globals accel_globals;
-@@ -4803,7 +4806,11 @@ static zend_result accel_finish_startup(void)
+@@ -4828,7 +4831,11 @@ static zend_result accel_finish_startup(void)
  #endif /* ZEND_WIN32 */
  }
- 
+
 +#ifdef COMPILE_DL_OPCACHE
  ZEND_EXT_API zend_extension zend_extension_entry = {
 +#else
@@ -42,74 +42,69 @@ index 8d45b2ae41..a7cc9abbb8 100644
  	PHP_VERSION,							/* version */
  	"Zend Technologies",					/* author */
 diff --git a/ext/opcache/config.m4 b/ext/opcache/config.m4
-index bef360e7c3..a96f80a82b 100644
+index 8f6d5ab7..19530321 100644
 --- a/ext/opcache/config.m4
 +++ b/ext/opcache/config.m4
-@@ -27,7 +27,8 @@ PHP_ARG_WITH([capstone],,
+@@ -26,8 +26,8 @@ PHP_ARG_WITH([capstone],
+   [no])
+
  if test "$PHP_OPCACHE" != "no"; then
- 
-   dnl Always build as shared extension
+-  dnl Always build as shared extension.
 -  ext_shared=yes
-+  dnl why?
++  dnl Always build as shared extension. (micro patches: no, we need static)
 +  dnl ext_shared=yes
- 
-   if test "$PHP_HUGE_CODE_PAGES" = "yes"; then
-     AC_DEFINE(HAVE_HUGE_CODE_PAGES, 1, [Define to enable copying PHP CODE pages into HUGE PAGES (experimental)])
-@@ -337,7 +338,9 @@ int main(void) {
- 	shared_alloc_mmap.c \
- 	shared_alloc_posix.c \
- 	$ZEND_JIT_SRC,
--	shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
-+	$ext_shared,,"-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 ${JIT_CFLAGS}",,yes)
-+
+
+   AS_VAR_IF([PHP_HUGE_CODE_PAGES], [yes],
+     [AC_DEFINE([HAVE_HUGE_CODE_PAGES], [1],
+@@ -343,6 +343,7 @@ int main(void) {
+     [-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1 $JIT_CFLAGS],,
+     [yes])
+
 +  AC_DEFINE(HAVE_OPCACHE, 1, [opcache enabled])
- 
+   PHP_ADD_EXTENSION_DEP(opcache, date)
    PHP_ADD_EXTENSION_DEP(opcache, pcre)
- 
+
 diff --git a/ext/opcache/config.w32 b/ext/opcache/config.w32
-index 24b4acaabc..452d57cc7d 100644
+index d0af7258..a054e6c8 100644
 --- a/ext/opcache/config.w32
 +++ b/ext/opcache/config.w32
-@@ -16,7 +16,9 @@ if (PHP_OPCACHE != "no") {
+@@ -16,8 +16,9 @@ if (PHP_OPCACHE != "no") {
  		zend_persist_calc.c \
  		zend_file_cache.c \
  		zend_shared_alloc.c \
 -		shared_alloc_win32.c", true, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
 +		shared_alloc_win32.c", PHP_OPCACHE_SHARED, "/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1");
-+
+
 +	AC_DEFINE('HAVE_OPCACHE', 1, 'opcache enabled');
- 
- 	if (PHP_OPCACHE_JIT == "yes") {
- 		if (CHECK_HEADER_ADD_INCLUDE("ir/ir.h", "CFLAGS_OPCACHE", PHP_OPCACHE + ";ext\\opcache\\jit")) {
+ 	ADD_EXTENSION_DEP('opcache', 'date');
+ 	ADD_EXTENSION_DEP('opcache', 'hash');
+ 	ADD_EXTENSION_DEP('opcache', 'pcre');
 diff --git a/ext/opcache/jit/ir/ir_gdb.c b/ext/opcache/jit/ir/ir_gdb.c
-index cf3a507d25..e679a8a55d 100644
+index ecaf8803..a8275466 100644
 --- a/ext/opcache/jit/ir/ir_gdb.c
 +++ b/ext/opcache/jit/ir/ir_gdb.c
-@@ -500,14 +500,14 @@ typedef struct _ir_gdbjit_descriptor {
- 	struct _ir_gdbjit_code_entry *first_entry;
- } ir_gdbjit_descriptor;
- 
+@@ -504,11 +504,11 @@ typedef struct _ir_gdbjit_descriptor {
+ extern ir_gdbjit_descriptor __jit_debug_descriptor;
+ void __jit_debug_register_code(void);
+ #else
 -ir_gdbjit_descriptor __jit_debug_descriptor = {
 +static ir_gdbjit_descriptor __jit_debug_descriptor = {
  	1, IR_GDBJIT_NOACTION, NULL, NULL
  };
- 
- #ifdef IR_EXTERNAL_GDB_ENTRY
- void __jit_debug_register_code(void);
- #else
+
 -IR_NEVER_INLINE void __jit_debug_register_code(void)
 +static IR_NEVER_INLINE void __jit_debug_register_code(void)
  {
  	__asm__ __volatile__("");
  }
 diff --git a/main/main.c b/main/main.c
-index a3acaf94b7..a1324aab51 100644
+index 0b38f303..b2cb9d4a 100644
 --- a/main/main.c
 +++ b/main/main.c
-@@ -2048,6 +2048,18 @@ void dummy_invalid_parameter_handler(
+@@ -2099,6 +2099,18 @@ void dummy_invalid_parameter_handler(
  }
  #endif
- 
+
 +// this can be moved to other place
 +#if defined(HAVE_OPCACHE) && !defined(COMPILE_DL_OPCACHE)
 +extern zend_extension opcache_zend_extension_entry;
@@ -125,7 +120,7 @@ index a3acaf94b7..a1324aab51 100644
  /* {{{ php_module_startup */
  zend_result php_module_startup(sapi_module_struct *sf, zend_module_entry *additional_module)
  {
-@@ -2224,6 +2236,9 @@ zend_result php_module_startup(sapi_module_struct *sf, zend_module_entry *additi
+@@ -2283,6 +2295,9 @@ zend_result php_module_startup(sapi_module_struct *sf, zend_module_entry *additi
  	   ahead of all other internals
  	 */
  	php_ini_register_extensions();
@@ -133,18 +128,19 @@ index a3acaf94b7..a1324aab51 100644
 +	zend_load_static_extensions();
 +#endif
  	zend_startup_modules();
- 
+
  	/* start Zend extensions */
 diff --git a/win32/build/confutils.js b/win32/build/confutils.js
-index 1da17bddbd..8aa1e6557d 100644
+index 1a4ddbff..f47090b7 100644
 --- a/win32/build/confutils.js
 +++ b/win32/build/confutils.js
-@@ -1534,6 +1534,8 @@ function EXTENSION(extname, file_list, shared, cflags, dllname, obj_dir)
+@@ -1531,7 +1531,8 @@ function EXTENSION(extname, file_list, shared, cflags, dllname, obj_dir)
+ 				}
  			}
  		}
- 
-+		// TODO: real skip zend extensions
-+		if (extname != 'opcache')
+-
++        // micro: skip zend opcache
++        if (extname != 'opcache')
  		extension_module_ptrs += '\tphpext_' + extname + '_ptr,\r\n';
- 
+
  		DEFINE('CFLAGS_' + EXT + '_OBJ', '$(CFLAGS_PHP) $(CFLAGS_' + EXT + ')');
