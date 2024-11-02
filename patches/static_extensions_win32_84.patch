@@ -1,17 +1,18 @@
 diff --git a/ext/fileinfo/config.w32 b/ext/fileinfo/config.w32
-index c7d897c1ca..d6f7cec5e2 100644
+index 2a42dc45..c207694f 100644
 --- a/ext/fileinfo/config.w32
 +++ b/ext/fileinfo/config.w32
-@@ -10,6 +10,6 @@ if (PHP_FILEINFO != 'no') {
+@@ -10,7 +10,7 @@ if (PHP_FILEINFO != 'no') {
  			readcdf.c softmagic.c der.c \
  			strcasestr.c buffer.c is_csv.c";
  
 -	EXTENSION('fileinfo', 'fileinfo.c php_libmagic.c', true, "/I" + configure_module_dirname + "/libmagic /I" + configure_module_dirname);
 +	EXTENSION('fileinfo', 'fileinfo.c php_libmagic.c', PHP_FILEINFO_SHARED, "/I" + configure_module_dirname + "/libmagic /I" + configure_module_dirname);
+ 	ADD_EXTENSION_DEP('fileinfo', 'pcre');
  	ADD_SOURCES(configure_module_dirname + '\\libmagic', LIBMAGIC_SOURCES, "fileinfo");
  }
 diff --git a/ext/openssl/config.w32 b/ext/openssl/config.w32
-index 24064ec2a5..87ff31618c 100644
+index 24064ec2..87ff3161 100644
 --- a/ext/openssl/config.w32
 +++ b/ext/openssl/config.w32
 @@ -1,6 +1,6 @@
