@@ -26,6 +26,7 @@ ARG_ENABLE('micro-logo', 'Use custom logo for micro sfx', 'no');
 	*/
 	if (PHP_MICRO_WIN32 == "yes") {
 		ADD_FLAG("CFLAGS_MICRO", "/D PHP_MICRO_WIN32_NO_CONSOLE");
+		ADD_FLAG("LDFLAG_MICRO", "/SUBSYSTEM:WINDOWS");
 	}
 
 	if (PHP_MICRO_LOGO != "no") {
