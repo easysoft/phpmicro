@@ -40,7 +40,8 @@ jobs:
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.0') \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.2') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.3') >> $GITHUB_OUTPUT
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.3') \
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.4') >> $GITHUB_OUTPUT
   wintests:
     name: Windows tests for PHP ${{ matrix.name }}
     runs-on: "windows-latest"
