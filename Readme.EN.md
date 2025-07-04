@@ -197,11 +197,15 @@ export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 
 ### INI settings
 
-See wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings)(TODO: en version)
+See wiki：[INI-settings](https://docs.toast.run/micro/en/ini-settings.html)
 
 ### PHP_BINARY constant
 
 In micro, the `PHP_BINARY` constant is an empty string. You can modify it using an ini setting: `micro.php_binary=somestring`
+
+## Section settings
+
+Section settings allows you code sign the concatenated executable, see wiki: [Section Settings](https://docs.toast.run/micro/en/sections.html)
 
 ## OSS License
 

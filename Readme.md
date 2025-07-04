@@ -196,11 +196,15 @@ export PKG_CONFIG_PATH=/my/prefered/path/lib/pkgconfig
 
 ### INI配置
 
-见wiki：[INI-settings](https://github.com/easysoft/phpmicro/wiki/INI-settings)
+见wiki：[INI-settings](https://docs.toast.run/micro/chs/ini-settings.html)
 
 ### PHP_BINARY常量
 
 micro中这个常量是空字符串，可以通过ini配置：`micro.php_binary=somestring`
+
+## Section配置
+
+section配置用于数字签名，见wiki: [Section设置](https://docs.toast.run/micro/chs/sections.html)
 
 ## 开源许可
 
