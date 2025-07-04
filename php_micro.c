@@ -509,8 +509,7 @@ int main(int argc, char *argv[])
     if (0 != (exit_status = micro_fileinfo_init())) {
         return exit_status;
     }
-    const size_t sfxsize = micro_get_sfxsize();
-    dbgprintf("my final sfxsize is %zd\n", sfxsize);
+    dbgprintf("my final sfxsize is %zd\n", micro_get_sfxsize());
     zend_file_handle file_handle;
     const char *self_filename_mb = micro_get_filename();
     php_self = (char *)micro_get_filename();
