@@ -47,6 +47,7 @@ typedef Elf32_Phdr Elf_Phdr;
 #elif defined(__APPLE__)
 #    include <mach-o/dyld.h>
 #    include <mach-o/getsect.h>
+#    include <mach-o/fat.h>
 #    if defined(__LP64__)
 typedef struct mach_header_64 mach_header;
 typedef struct segment_command_64 segment_command;
@@ -253,12 +254,15 @@ end:
 /**
  * In windows, this struct is stored as RC_DATA, with id PHP_MICRO_SFXSIZE_ID
  * In ELF, this struct is located at .sfxsize section
- * In Mach-O, this struct is located at __DATA,__micro_sfxsize section
+ * In Mach-O, for common macho, this struct is located at __DATA,__micro_sfxsize section
+ * In Mach-O, for fat macho, this struct is located at
+ *   start of the CPU_TYPE_X86 fat arch binary + 0x1000 (4096 is minimal size for a stub executable)
  * If sections not set,
  * size will be:
  * Windows uses the end of the last section, this supports UPX
  * ELF uses the end of the last section or last program header segment, this do not support UPX
  * Mach-O uses the end of __LINKEDIT
+ * Mach-O fat binary uses the end of the last fat arch
  * limit will be 0 (no limit)
  */
 typedef struct _micro_sfxsize_section_t {
@@ -405,6 +409,64 @@ error:
 
     return SUCCESS;
 #elif defined(__APPLE__)
+    // get file header first
+    const char *self_path = micro_get_filename();
+
+    int fd = open(self_path, O_RDONLY);
+    if (fd < 0) {
+        fprintf(stderr, "cannot open self file: %s\n", self_path);
+        return FAILURE;
+    }
+
+    // get file header
+    uint32_t magic;
+    if (sizeof(uint32_t) != read(fd, &magic, sizeof(uint32_t))) {
+        fprintf(stderr, "cannot read file header magic: %s\n", self_path);
+        return FAILURE;
+    }
+    if (magic == FAT_MAGIC || magic == FAT_CIGAM) {
+        // fat file
+        uint32_t nfat_arch;
+        if (sizeof(uint32_t) != read(fd, &nfat_arch, sizeof(uint32_t))) {
+            fprintf(stderr, "cannot read fat header nfat_arch: %s\n", self_path);
+            return FAILURE;
+        }
+        nfat_arch = ntohl(nfat_arch);
+        _final_sfxsize = 0;
+        for (int i = 0; i < nfat_arch; i++) {
+            struct fat_arch fat_arch;
+            if (sizeof(fat_arch) != read(fd, &fat_arch, sizeof(fat_arch))) {
+                fprintf(stderr, "cannot read fat arch: %s\n", self_path);
+                return FAILURE;
+            }
+            // set to the end of the last fat arch
+            uint32_t archOffset = ntohl(fat_arch.offset);
+            uint32_t archSize = ntohl(fat_arch.size);
+            _final_sfxsize = archOffset + archSize;
+            if (fat_arch.cputype == htonl((cpu_type_t)CPU_TYPE_X86)) {
+                // 0x1000 is minimal size for a stub executable
+                // this will skip the stub executable
+                if (lseek(fd, archOffset + 0x1000, SEEK_SET) != archOffset + 0x1000) {
+                    fprintf(stderr, "cannot seek to fat macho: %s\n", self_path);
+                    return FAILURE;
+                }
+                uint32_t sfxsizeSectionSize = archSize - 0x1000;
+                if (sfxsizeSectionSize > sizeof(micro_sfxsize_section_t)) {
+                    sfxsizeSectionSize = sizeof(micro_sfxsize_section_t);
+                }
+                if (sfxsizeSectionSize != read(fd, &sfxsizeSection, sfxsizeSectionSize)) {
+                    fprintf(stderr, "cannot read fat macho: %s\n", self_path);
+                    return FAILURE;
+                }
+                read_sfxsize_section(sfxsizeSectionSize);
+                dbgprintf("using fat macho arch CPU_TYPE_X86: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
+                return SUCCESS;
+            }
+        }
+
+        dbgprintf("using end of fat macho: %zd, %zd\n", _final_sfxsize, _sfxsize_limit);
+        return SUCCESS;
+    }
     // get mach header
     mach_header *header = (mach_header *)_dyld_get_image_header(0);
     const segment_command *linkedit = NULL;
