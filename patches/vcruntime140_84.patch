@@ -1,0 +1,13 @@
+diff --git a/win32/winutil.c b/win32/winutil.c
+index cab4b5bac9b..e388ac5b290 100644
+--- a/win32/winutil.c
++++ b/win32/winutil.c
+@@ -484,7 +484,7 @@ PHP_WINUTIL_API BOOL php_win32_image_compatible(HMODULE handle, char **err)
+ /* Expect a CRT module handle */
+ PHP_WINUTIL_API BOOL php_win32_crt_compatible(char **err)
+ {/*{{{*/
+-#if PHP_LINKER_MAJOR == 14
++#if false && PHP_LINKER_MAJOR == 14
+ 	/* Extend for other CRT if needed. */
+ # ifdef _DEBUG
+ 	const char *crt_name = "vcruntime140d.dll";

@@ -74,6 +74,10 @@ PHP 8.3.11， 8.2.23中，opcache的config.m4发生了[变动](https://github.co
 
 The opcache's config.m4 has [changed](https://github.com/php/php-src/commit/d20d11375fa602236e1fb828f6a2236b19b43cdc) in PHP 8.3.11 and 8.2.23, and this patch corresponds to the updated version.
 
+PHP 8.5+不再需要这个patch，opcache默认开启并内置。static_opcache_85.patch为空文件
+
+The patch is no longer needed at PHP 8.5+, opcache will be enabled and statically linked in by default, static_opcache_85.patch is an empty file.
+
 ### cli_checks
 
 绕过许多硬编码的“是不是cli”的检查
