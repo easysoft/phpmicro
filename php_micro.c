@@ -51,7 +51,9 @@ here's original copyright notice
 #    include "win32/time.h"
 BOOL php_win32_init_random_bytes(void);
 BOOL php_win32_shutdown_random_bytes(void);
+#if PHP_VERSION_ID < 80500
 BOOL php_win32_ioutil_init(void);
+#endif
 #if PHP_VERSION_ID < 80400
 void php_win32_init_gettimeofday(void);
 #endif
@@ -588,7 +590,9 @@ int main(int argc, char *argv[])
     int wapiret = 0;
     php_win32_init_random_bytes();
     // php_win32_signal_ctrl_handler_init();
+#if PHP_VERSION_ID < 80500
     php_win32_ioutil_init();
+#endif
 #if PHP_VERSION_ID < 80400
     php_win32_init_gettimeofday();
 #endif
