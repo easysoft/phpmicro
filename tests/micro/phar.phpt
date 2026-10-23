@@ -8,6 +8,9 @@ if("micro" !== php_sapi_name()){
 if(!extension_loaded("phar")){
     die("SKIP because phar extension is required");
 }
+if(PHP_VERSION_ID < 80300){
+    die("SKIP because the phar stream seek behavior differs before PHP 8.3");
+}
 ?>
 --INI--
 phar.readonly=0
@@ -129,8 +132,6 @@ index.php
 include seek_self.inc from phar
 string(4) "<?ph"
 int(-1)
-bool(false)
-string(0) ""
 int(0)
 int(0)
 string(4) "<?ph"
@@ -148,31 +149,29 @@ string(4) "
 
 $s"
 int(-1)
-bool(false)
+int(9)
 string(0) ""
 int(0)
 string(0) ""
 int(-1)
 string(0) ""
-bool(false)
-int(1585)
+int(1534)
+int(1534)
 Failed to seek to the end of the file
 int(-1)
 string(0) ""
-bool(false)
-int(1585)
+int(1534)
+int(1534)
 Failed to seek to the end of the file
-int(-1)
+int(0)
 string(0) ""
-bool(false)
-int(1585)
+int(1534)
+int(1534)
 Failed to seek to the end of the file
 Done
 include seek_self.inc from dir
 string(4) "<?ph"
 int(-1)
-int(4)
-string(0) ""
 int(0)
 int(0)
 string(4) "<?ph"

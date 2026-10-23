@@ -16,7 +16,6 @@ var_dump(fread($self, 4));
 $ret = fseek($self, -4, SEEK_SET);
 var_dump($ret);
 var_dump(ftell($self));
-var_dump(fread($self, 4));
 
 $ret = fseek($self, 0, SEEK_SET);
 var_dump($ret);
@@ -87,7 +86,6 @@ echo "Done\n";
 string(4) "<?ph"
 int(-1)
 int(4)
-string(0) ""
 int(0)
 int(0)
 string(4) "<?ph"

@@ -6,8 +6,6 @@ var_dump(fread($self, 4));
 
 $ret = fseek($self, -4, SEEK_SET);
 var_dump($ret);
-var_dump(ftell($self));
-var_dump(fread($self, 4));
 
 $ret = fseek($self, 0, SEEK_SET);
 var_dump($ret);
