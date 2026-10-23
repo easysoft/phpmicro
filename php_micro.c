@@ -299,40 +299,30 @@ static void sapi_micro_ini_defaults(HashTable *configuration_hash) {
  */
 static sapi_module_struct micro_sapi_module = {
 #ifdef PHP_MICRO_FAKE_CLI
-    "cli", /* name */
+    .name = "cli",
 #else
-    "micro", /* name */
+    .name = "micro",
 #endif
-    "micro PHP sfx", /* pretty name */
+    .pretty_name = "micro PHP sfx",
 
-    php_micro_startup,                 /* startup */
-    php_micro_module_shutdown_wrapper, /* shutdown */
+    .startup = php_micro_startup,
+    .shutdown = php_micro_module_shutdown_wrapper,
 
-    NULL,                  /* activate */
-    sapi_micro_deactivate, /* deactivate */
+    .deactivate = sapi_micro_deactivate,
 
-    sapi_micro_ub_write, /* unbuffered write */
-    sapi_micro_flush,    /* flush */
+    .ub_write = sapi_micro_ub_write,
+    .flush = sapi_micro_flush,
 
-    NULL, /* get uid */
-    NULL, /* getenv */
+    .sapi_error = php_error,
 
-    php_error, /* error handler */
+    .header_handler = sapi_micro_header_handler,
+    .send_headers = sapi_micro_send_headers,
+    .send_header = sapi_micro_send_header,
 
-    sapi_micro_header_handler, /* header handler */
-    sapi_micro_send_headers,   /* send headers handler */
-    sapi_micro_send_header,    /* send header handler */
+    .read_cookies = sapi_micro_read_cookies,
 
-    NULL,                    /* read POST data */
-    sapi_micro_read_cookies, /* read Cookies */
-
-    sapi_micro_register_variables, /* register server variables */
-    sapi_micro_log_message,        /* Log message */
-
-    NULL, /* Get request time */
-    NULL, /* Child terminate */
-
-    STANDARD_SAPI_MODULE_PROPERTIES,
+    .register_server_variables = sapi_micro_register_variables,
+    .log_message = sapi_micro_log_message,
 };
 /* }}} */
 
