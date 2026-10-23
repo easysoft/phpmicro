@@ -257,6 +257,18 @@ static char *sapi_micro_read_cookies(void) /* {{{ */
 }
 /* }}} */
 
+// The script is appended to the sfx image, so report the file size without
+// the image part. opcache uses this size for the script that it caches
+static zend_stat_t *sapi_micro_get_stat(void) /* {{{ */
+{
+    if (VCWD_STAT(micro_get_filename(), &SG(global_stat)) == -1) {
+        return NULL;
+    }
+    SG(global_stat).st_size -= micro_get_sfxsize();
+    return &SG(global_stat);
+}
+/* }}} */
+
 static int sapi_micro_header_handler(sapi_header_struct *h, sapi_header_op_enum op, sapi_headers_struct *s) /* {{{ */
 {
     return 0;
@@ -333,6 +345,7 @@ static sapi_module_struct micro_sapi_module = {
 
     .ub_write = sapi_micro_ub_write,
     .flush = sapi_micro_flush,
+    .get_stat = sapi_micro_get_stat,
 
     .sapi_error = php_error,
 
