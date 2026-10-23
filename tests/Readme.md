@@ -18,3 +18,4 @@ these tests may be skipped in command line via modiffied run-tests.php
 these tests may failed if not using cli_checks.patch because of php internel sapi name checks.
 
  - tests/lang/bug45392.phpt
+ - tests/micro/stdio.phpt
