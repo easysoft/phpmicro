@@ -6,7 +6,7 @@ index 2403d77a..c908a1b4 100644
  	return phar_find_in_include_path((char *) filename, filename_len, NULL);
  }
  
-+char *micro_get_filename(void);
++const char *micro_get_filename(void);
 +
  static zend_op_array *phar_compile_file(zend_file_handle *file_handle, int type) /* {{{ */
  {

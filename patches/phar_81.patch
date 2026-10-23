@@ -6,7 +6,7 @@ index 3c0f3eb50b..455b303a8d 100644
  	return ret;
  }
  
-+char *micro_get_filename(void);
++const char *micro_get_filename(void);
 +
  static zend_op_array *phar_compile_file(zend_file_handle *file_handle, int type) /* {{{ */
  {
