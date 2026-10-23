@@ -20,7 +20,12 @@ jobs:
           [{
             "name": "master",
             "rev":"master",
-            "patch":"84",
+            "patch":"87",
+          }, {
+            # 8.6 is not released yet, track its branch
+            "name": "8.6",
+            "rev":"PHP-8.6",
+            "patch":"86",
           }] +
           [.[] | {
             # ver is like 8.0.0
@@ -30,17 +35,16 @@ jobs:
             "rev": ("php-"+.ver),
             "patch": {
               # mapping maj.min to patches used
+              "8.5": "85",
               "8.4": "84",
               "8.3": "83",
               "8.2": "82",
-              "8.1": "81",
-              "8.0": "80",
             }[.ver | sub("(?<v>\\d+\\.\\d+)\\..+"; .v)],
           }]' \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.0') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.1') \
             <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.2') \
-            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.3') >> $GITHUB_OUTPUT
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.3') \
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.4') \
+            <(curl -sfSL 'https://www.php.net/releases/?json&max=1&version=8.5') >> $GITHUB_OUTPUT
   wintests:
     name: Windows tests for PHP ${{ matrix.name }}
     runs-on: "windows-latest"
@@ -81,7 +85,7 @@ jobs:
         working-directory: php-src
         run: |
           $patchVer = "${{ matrix.patch }}"
-          $series = '84', '83', '82', '81', '80'
+          $series = '87', '86', '85', '84', '83', '82', '81', '80'
           $patches = 'cli_checks', 'vcruntime140', 'win32', 'zend_stream', 'phar', 'comctl32', 'static_opcache', 'static_extensions_win32'
           foreach ( $patch in $patches )
           {
@@ -133,7 +137,7 @@ jobs:
         shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs17-x64.bat -t {0}
         working-directory: php-src
         run: |
-          nmake micro_test TESTS="--show-diff --color sapi/micro/tests"
+          nmake micro_test TESTS="-j1 --show-diff --color sapi/micro/tests"
   linuxtests:
     name: Linux tests for PHP ${{ matrix.name }}
     runs-on: "ubuntu-latest"
@@ -171,7 +175,7 @@ jobs:
               patch -p1 < $path
               continue
             fi
-            for ver in '84' '83' '82' '81' '80'
+            for ver in '87' '86' '85' '84' '83' '82' '81' '80'
             do
               if [ $patchVer -lt $ver ]
               then
@@ -236,7 +240,7 @@ jobs:
       - name: Test micro SAPI for PHP
         working-directory: php-src
         run: |
-          make micro_test TESTS="--show-diff --color sapi/micro/tests"
+          make micro_test TESTS="-j1 --show-diff --color sapi/micro/tests"
   macostests:
     name: macOS tests for PHP ${{ matrix.name }}
     #runs-on: "macos-latest"
@@ -277,7 +281,7 @@ jobs:
               patch -p1 < $path
               continue
             fi
-            for ver in '84' '83' '82' '81' '80'
+            for ver in '87' '86' '85' '84' '83' '82' '81' '80'
             do
               if [ $patchVer -lt $ver ]
               then
@@ -340,4 +344,4 @@ jobs:
       - name: Test micro SAPI for PHP
         working-directory: php-src
         run: |
-          make micro_test TESTS="--show-diff --color sapi/micro/tests"
+          make micro_test TESTS="-j1 --show-diff --color sapi/micro/tests"
