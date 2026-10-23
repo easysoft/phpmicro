@@ -220,9 +220,29 @@ static void sapi_micro_log_message(const char *message, int syslog_type_int) /* 
 }
 /* }}} */
 
+static int sapi_micro_activate(void) /* {{{ */
+{
+#if defined(PHP_WIN32) && defined(ZTS)
+    // Each image has its own static TSRMLS cache. An extension can start a
+    // request in a thread that it created itself, and that thread updates only
+    // the cache of the extension image. Update the cache of this image before
+    // a later SAPI callback uses SG()
+    ZEND_TSRMLS_CACHE_UPDATE();
+#endif
+    return SUCCESS;
+}
+/* }}} */
+
 static int sapi_micro_deactivate(void) /* {{{ */
 {
     fflush(stdout);
+#ifdef ZTS
+    // A thread that an extension created can call this callback before the
+    // static TSRMLS cache of this image is valid. Do not touch SG() there
+    if (!tsrm_is_main_thread()) {
+        return SUCCESS;
+    }
+#endif
     if (SG(request_info).argv0) {
         free(SG(request_info).argv0);
         SG(request_info).argv0 = NULL;
@@ -308,6 +328,7 @@ static sapi_module_struct micro_sapi_module = {
     .startup = php_micro_startup,
     .shutdown = php_micro_module_shutdown_wrapper,
 
+    .activate = sapi_micro_activate,
     .deactivate = sapi_micro_deactivate,
 
     .ub_write = sapi_micro_ub_write,
