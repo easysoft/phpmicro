@@ -62,19 +62,19 @@ jobs:
           git config --global core.eol lf
 
       - name: Checkout PHP
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: php-src/sapi/micro
 
       - name: Checkout php-sdk-binary-tools
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: php/php-sdk-binary-tools
           path: php-sdk-binary-tools
@@ -109,7 +109,7 @@ jobs:
           }
 
       - name: Build micro SAPI for PHP
-        shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs17-x64.bat -t {0}
+        shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs18-x64.bat -t {0}
         working-directory: php-src
         run: |
           buildconf && ^
@@ -127,14 +127,14 @@ jobs:
           nmake micro
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: micro_windows_${{ matrix.name }}
           path: php-src/x64/Release/micro.sfx
           if-no-files-found: error
 
       - name: Test micro SAPI for PHP
-        shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs17-x64.bat -t {0}
+        shell: cmd /c ..\php-sdk-binary-tools\phpsdk-vs18-x64.bat -t {0}
         working-directory: php-src
         run: |
           nmake micro_test TESTS="-j1 --show-diff --color sapi/micro/tests"
@@ -150,14 +150,14 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout PHP
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: php-src/sapi/micro
 
@@ -190,6 +190,15 @@ jobs:
               fi
             done
           done
+
+      - name: Prepare apt cache
+        run: sudo chown -R $USER /var/cache/apt/archives
+
+      - name: Cache apt packages
+        uses: actions/cache@v6
+        with:
+          path: /var/cache/apt/archives
+          key: apt-v1-${{ runner.os }}
 
       - name: Install deps
         run: |
@@ -231,7 +240,7 @@ jobs:
           elfedit --output-osabi linux sapi/micro/micro.sfx
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: micro_linux_${{ matrix.name }}
           path: php-src/sapi/micro/micro.sfx
@@ -243,10 +252,7 @@ jobs:
           make micro_test TESTS="-j1 --show-diff --color sapi/micro/tests"
   macostests:
     name: macOS tests for PHP ${{ matrix.name }}
-    #runs-on: "macos-latest"
-    # macos-14-arm64 now cannot build php without install many things
-    # we cannot select macos-14 because macos-14 will select arm64
-    runs-on: "macos-13"
+    runs-on: "macos-latest"
     needs:
       - fetchversion
     strategy:
@@ -256,14 +262,14 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout PHP
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: php/php-src
           path: php-src
           ref: ${{ matrix.rev }}
 
       - name: Checkout micro
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: php-src/sapi/micro
 
@@ -297,14 +303,20 @@ jobs:
             done
           done
 
+      - name: Cache Homebrew packages
+        uses: actions/cache@v6
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: brew-v1-${{ runner.os }}
+
       - name: Install deps
         run: |
-          brew install bison re2c
+          brew install autoconf bison re2c
 
       - name: Build micro SAPI for PHP
         working-directory: php-src
         run: |
-          export PATH="/usr/local/opt/bison/bin:$PATH"
+          export PATH="/opt/homebrew/opt/bison/bin:/usr/local/opt/bison/bin:$PATH"
           ./buildconf --force &&
           ./configure \
             --disable-all \
@@ -335,7 +347,7 @@ jobs:
             EXTRA_CFLAGS='-Os'
 
       - name: Upload built micro as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: micro_macos_${{ matrix.name }}
           path: php-src/sapi/micro/micro.sfx
