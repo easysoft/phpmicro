@@ -408,6 +408,70 @@ typedef struct _micro_reregistered_proto {
 // no wrapper ops proxies here
 
 static inline int initial_seek(php_stream *ps);
+
+/*
+ * phar resolves a phar:// url for an archive without a .phar-like extension
+ * only when the archive is already registered in the thread local PHAR_G.
+ * The payload of the sfx has no name of its own, and a worker thread starts
+ * with an empty registry, so register the sfx before the wrapper parses such
+ * a url. phar_open_from_filename() is idempotent, a registered archive is
+ * returned from the registry without reopening the file
+ */
+struct _phar_archive_data;
+
+/* PHP 8.6 dropped the separate alias length argument */
+#if PHP_VERSION_ID >= 80600
+#    define MICRO_PHAR_ALIAS_PARAMS void *alias, uint32_t options
+#    define MICRO_PHAR_ALIAS_ARGS NULL, 0
+#else
+#    define MICRO_PHAR_ALIAS_PARAMS void *alias, size_t alias_len, uint32_t options
+#    define MICRO_PHAR_ALIAS_ARGS NULL, 0, 0
+#endif
+
+#if defined(_MSC_VER)
+/* phar is optional, link a build without it to a stub that always fails,
+ * the second name covers the leading underscore of 32 bit builds */
+zend_result micro_phar_open_from_filename_absent(char *fname, size_t fname_len,
+    MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error);
+#    pragma comment(linker, "/alternatename:phar_open_from_filename=micro_phar_open_from_filename_absent")
+#    pragma comment(linker, "/alternatename:_phar_open_from_filename=_micro_phar_open_from_filename_absent")
+#elif defined(__GNUC__)
+__attribute__((weak))
+#endif
+extern zend_result phar_open_from_filename(char *fname, size_t fname_len,
+    MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error);
+
+#if defined(_MSC_VER)
+zend_result micro_phar_open_from_filename_absent(char *fname, size_t fname_len,
+    MICRO_PHAR_ALIAS_PARAMS, struct _phar_archive_data **pphar, char **error) {
+    return FAILURE;
+}
+#endif
+
+static void micro_register_self_phar(const micro_reregistered_proto *pproto, const char *url) {
+    struct _phar_archive_data *archive = NULL;
+    char *error = NULL;
+    const char *self;
+
+    if (0 != strcmp(pproto->proto, "phar")) {
+        return;
+    }
+#if defined(__GNUC__) && !defined(_MSC_VER)
+    if (NULL == phar_open_from_filename) {
+        return;
+    }
+#endif
+    self = micro_get_filename();
+    if (NULL == strstr(url, self)) {
+        return;
+    }
+    if (SUCCESS != phar_open_from_filename((char *) self, strlen(self), MICRO_PHAR_ALIAS_ARGS, &archive, &error)) {
+        if (error) {
+            efree(error);
+        }
+    }
+}
+
 /*
  *   micro_wrapper_stream_opener - modify ops according to filename
  *   replaces someproto_wrapper_open_url
@@ -428,13 +492,16 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
         self_filename_slashed = micro_slashize(micro_get_filename());
         self_filename_slashed_len = strlen(self_filename_slashed);
     }
+    micro_register_self_phar(pproto, filename);
     php_stream *ps = pproto->orig_wrapper->wops->stream_opener(
         wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
     if (NULL == ps) {
         return ps;
     }
     const char *filename_slashed = micro_slashize(filename);
-    if (strstr(filename, "://") &&
+    /* a phar url names the sfx but its stream is an entry of the archive,
+     * the offset of the archive itself is applied by the plain files wrapper */
+    if (0 != strcmp(pproto->proto, "phar") && strstr(filename, "://") &&
         0 == strncmp(strstr(filename_slashed, "://") + 3, self_filename_slashed, self_filename_slashed_len)) {
         dbgprintf("stream %s is in self\n", filename);
         if (SUCCESS == micro_modify_ops_with_offset(ps, 0)) {
@@ -449,6 +516,39 @@ static php_stream *micro_wrapper_stream_opener(php_stream_wrapper *wrapper, cons
 #if PHP_VERSION_ID < 80100
 #    define zend_string_init_existing_interned zend_string_init_interned
 #endif
+
+/*
+ *   micro_wrapper_url_stat - url_stat that registers the sfx as a phar first
+ *   is_file(), file_exists() and stat() never reach the stream opener
+ */
+static int micro_wrapper_url_stat(php_stream_wrapper *wrapper, const char *url, int flags,
+    php_stream_statbuf *ssb, php_stream_context *context) {
+    micro_reregistered_proto *pproto =
+        zend_hash_str_find_ptr(&reregistered_protos, (void *) wrapper, sizeof(*wrapper));
+
+    if (NULL == pproto || NULL == pproto->orig_wrapper->wops->url_stat) {
+        return FAILURE;
+    }
+    micro_register_self_phar(pproto, url);
+    return pproto->orig_wrapper->wops->url_stat(wrapper, url, flags, ssb, context);
+}
+
+/*
+ *   micro_wrapper_dir_opener - dir_opener that registers the sfx as a phar first
+ *   opendir() does not go through the stream opener
+ */
+static php_stream *micro_wrapper_dir_opener(php_stream_wrapper *wrapper, const char *filename, const char *mode,
+    int options, zend_string **opened_path, php_stream_context *context STREAMS_DC) {
+    micro_reregistered_proto *pproto =
+        zend_hash_str_find_ptr(&reregistered_protos, (void *) wrapper, sizeof(*wrapper));
+
+    if (NULL == pproto || NULL == pproto->orig_wrapper->wops->dir_opener) {
+        return NULL;
+    }
+    micro_register_self_phar(pproto, filename);
+    return pproto->orig_wrapper->wops->dir_opener(
+        wrapper, filename, mode, options, opened_path, context STREAMS_REL_CC);
+}
 
 /*
  *    micro_reregister_proto - hook some:// protocol
@@ -495,6 +595,12 @@ int micro_reregister_proto(const char *proto) {
 
     // modify stream opener
     modified_wops->stream_opener = micro_wrapper_stream_opener;
+    if (NULL != modified_wops->url_stat) {
+        modified_wops->url_stat = micro_wrapper_url_stat;
+    }
+    if (NULL != modified_wops->dir_opener) {
+        modified_wops->dir_opener = micro_wrapper_dir_opener;
+    }
 
     // re-register it
     if (SUCCESS != (ret = php_register_url_stream_wrapper(proto, modified_wrapper))) {
